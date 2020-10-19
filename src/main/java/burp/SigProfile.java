@@ -23,32 +23,29 @@ public class SigProfile implements Cloneable
     private static final transient LogWriter logger = LogWriter.getLogger();
 
     private String name;
-    // accessKeyId is used to uniquely identify this profile for signing
-    private String accessKeyId;
+    // accessKey is used to uniquely identify this profile for signing
+    private String accessKey;
     private String secretKey;
-/*
-    private HashMap<String, SigCredentialProvider> credentialProviders;
-    private HashMap<String, Integer> credentialProvidersPriority;*/
 
     // see https://docs.aws.amazon.com/IAM/latest/APIReference/API_AccessKey.html
     public static final Pattern profileNamePattern = Pattern.compile("^[\\w+=,.@-]{1,64}$");
-    public static final Pattern accessKeyIdPattern = Pattern.compile("^[\\w]{5,20}$");
+    public static final Pattern accessKeyPattern = Pattern.compile("^[\\w]{5,20}$");
     public static final Pattern secretKeyPattern = Pattern.compile("^[a-zA-Z0-9/+]{1,128}$"); // base64 characters. not sure on length
 
     public String getName() { return this.name; }
 
 
-    // NOTE that this value is used for matching incoming requests only and DOES NOT represent the accessKeyId
+    // NOTE that this value is used for matching incoming requests only and DOES NOT represent the accessKey
     // used to sign the request
-    public String getAccessKeyId() { return this.accessKeyId; }
+    public String getAccessKey() { return this.accessKey; }
     public String getSecretKey() { return this.secretKey; }
     /*
-    get the signature accessKeyId that should be used for selecting this profile
+    get the signature accessKey that should be used for selecting this profile
      */
-    public String getAccessKeyIdForProfileSelection()
+    public String getAccessKeyForProfileSelection()
     {
-        if (getAccessKeyId() != null) {
-            return getAccessKeyId();
+        if (getAccessKey() != null) {
+            return getAccessKey();
         }
         return null;
     }
@@ -67,11 +64,11 @@ public class SigProfile implements Cloneable
             throw new IllegalArgumentException("Profile name must match pattern "+profileNamePattern.pattern());
     }
 
-    private void setAccessKeyId(final String accessKeyId) {
-        if (accessKeyIdPattern.matcher(accessKeyId).matches())
-            this.accessKeyId = accessKeyId;
+    private void setAccessKey(final String accessKey) {
+        if (accessKeyPattern.matcher(accessKey).matches())
+            this.accessKey = accessKey;
         else
-            throw new IllegalArgumentException("Profile accessKeyId must match pattern " + accessKeyIdPattern.pattern());
+            throw new IllegalArgumentException("Profile accessKey must match pattern " + accessKeyPattern.pattern());
     }
 
     private void setSecretKey(final String secretKey) {
@@ -97,12 +94,12 @@ public class SigProfile implements Cloneable
         public Builder(final SigProfile profile) {
             this.profile = profile.clone();
         }
-        public Builder withAccessKeyId(final String accessKeyId) {
-            this.profile.setAccessKeyId(accessKeyId);
+        public Builder withAccessKey(final String accessKey) {
+            this.profile.setAccessKey(accessKey);
             return this;
         }
-        public Builder withAccessKeySecretKey(final String accessKeyId, final String secretKey) {
-            this.profile.setAccessKeyId(accessKeyId);
+        public Builder withAccessKeySecretKey(final String accessKey, final String secretKey) {
+            this.profile.setAccessKey(accessKey);
             this.profile.setSecretKey(secretKey);
             return this;
         }
@@ -127,7 +124,7 @@ public class SigProfile implements Cloneable
     private SigProfile(final String name)
     {
         setName(name);
-        this.accessKeyId = null;
+        this.accessKey = null;
         this.secretKey = null;
         /*
         this.credentialProviders = new HashMap<>();
@@ -146,10 +143,7 @@ public class SigProfile implements Cloneable
         }
         return configPath;
     }
-
-    // refs: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
-    //       https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html
-    //
+ 
     // Read profiles from an aws cli credential file. Additional properties may be read from the config
     // file where profile names must be specified with a "profile " prefix.
     public static List<SigProfile> fromCredentialPath(final Path path)
@@ -169,26 +163,19 @@ public class SigProfile implements Cloneable
             section.putAll(config.getOrDefault("profile "+name, new HashMap<>()));
             section.putAll(credentials.getOrDefault(name, new HashMap<>()));
 
-            if ((section.containsKey("aws_access_key_id") && section.containsKey("aws_secret_access_key")) || section.containsKey("source_profile")) {
-/*                final String region = section.getOrDefault("region", "");*/
-                String accessKeyId = section.getOrDefault("aws_access_key_id", null);
-                String secretAccessKey = section.getOrDefault("aws_secret_access_key", null);
-/*
-                String sessionToken = section.getOrDefault("aws_session_token", null);
-*/
-
+            if ((section.containsKey("access_key") && section.containsKey("secret_key")) || section.containsKey("source_profile")) {
+                String accessKey = section.getOrDefault("access_key", null);
+                String secretKey = section.getOrDefault("secret_key", null);
                 // if source_profile exists, check that profile for creds.
                 if (section.containsKey("source_profile")) {
                     final String source = section.get("source_profile");
                     Map<String, String> sourceSection = new HashMap<>();
                     sourceSection.putAll(config.getOrDefault("profile "+source, new HashMap<>()));
                     sourceSection.putAll(credentials.getOrDefault(source, new HashMap<>()));
-                    if (sourceSection.containsKey("aws_access_key_id") && sourceSection.containsKey("aws_secret_access_key")) {
-                        accessKeyId = sourceSection.get("aws_access_key_id");
-                        secretAccessKey = sourceSection.get("aws_secret_access_key");
-/*
-                        sessionToken = sourceSection.getOrDefault("aws_session_token", null);
-*/
+                    if (sourceSection.containsKey("access_key") && sourceSection.containsKey("secret_key")) {
+                        accessKey = sourceSection.get("access_key");
+                        secretKey = sourceSection.get("secret_key");
+
                     }
                     else {
                         logger.error(String.format("Profile [%s] refers to source_profile [%s] which does not contain credentials.", name, source));
@@ -196,7 +183,7 @@ public class SigProfile implements Cloneable
                     }
                 }
 
-                SigProfile.Builder newProfileBuilder = new SigProfile.Builder(name).withAccessKeySecretKey(accessKeyId,secretAccessKey);
+                SigProfile.Builder newProfileBuilder = new SigProfile.Builder(name).withAccessKeySecretKey(accessKey,secretKey);
                 profileList.add(newProfileBuilder.build());
             }
         }
@@ -245,6 +232,6 @@ public class SigProfile implements Cloneable
 
     @Override
     public String toString() {
-        return String.format("name = '%s', keyId = '%s'", name, accessKeyId);
+        return String.format("name = '%s', keyId = '%s'", name, accessKey);
     }
 }

@@ -17,7 +17,7 @@ public class SigProfileEditorDialog extends JDialog
     protected JButton okButton;
     protected JPanel providerPanel;
 
-    private JTextField accessKeyIdTextField;
+    private JTextField accessKeyTextField;
     protected JTextField secretKeyTextField;
     private JLabel statusLabel;
     private String newProfileName = null;
@@ -75,9 +75,9 @@ public class SigProfileEditorDialog extends JDialog
         JPanel staticCredentialsPanel = new JPanel(new GridBagLayout());
         staticCredentialsPanel.setBorder(new TitledBorder("Credentials"));
 
-        staticCredentialsPanel.add(new JLabel("AccessKeyId"), newConstraint(0, 0, GridBagConstraints.LINE_START));
-        this.accessKeyIdTextField = new JTextFieldHint("", TEXT_FIELD_WIDTH-3, "Required");
-        staticCredentialsPanel.add(accessKeyIdTextField, newConstraint(1, 0));
+        staticCredentialsPanel.add(new JLabel("AccessKey"), newConstraint(0, 0, GridBagConstraints.LINE_START));
+        this.accessKeyTextField = new JTextFieldHint("", TEXT_FIELD_WIDTH-3, "Required");
+        staticCredentialsPanel.add(accessKeyTextField, newConstraint(1, 0));
         staticCredentialsPanel.add(new JLabel("SecretKey"), newConstraint(0, 1, GridBagConstraints.LINE_START));
         this.secretKeyTextField = new JTextFieldHint("", TEXT_FIELD_WIDTH-3, "Required");
         staticCredentialsPanel.add(secretKeyTextField, newConstraint(1, 1));
@@ -102,24 +102,18 @@ public class SigProfileEditorDialog extends JDialog
         });
         okButton.addActionListener(actionEvent -> {
             //SigAssumeRoleCredentialProvider assumeRole = null;
-            final String accessKeyId = accessKeyIdTextField.getText();
+            final String accessKey = accessKeyTextField.getText();
             final String secretKey = secretKeyTextField.getText();
 
             try {
                 SigProfile.Builder newProfileBuilder = new SigProfile.Builder(nameTextField.getText());
 
                 // if any cred fields are specified, attempt to use them.
-                if (!accessKeyId.equals("") || !secretKey.equals("") ) {
-                    //SigCredential credential = new SigCredential(accessKeyIdTextField.getText(), secretKeyTextField.getText());
-                    newProfileBuilder.withAccessKeySecretKey(accessKeyIdTextField.getText(), secretKeyTextField.getText());
-                    //SigCredential credential = new SigStaticCredential(accessKeyIdTextField.getText(), secretKeyTextField.getText());
-                    //newProfileBuilder.withCredentialProvider(new SigStaticCredentialProvider(credential), SigProfile.DEFAULT_STATIC_PRIORITY);
+                if (!accessKey.equals("") || !secretKey.equals("") ) {
+                    newProfileBuilder.withAccessKeySecretKey(accessKeyTextField.getText(), secretKeyTextField.getText());
                 }
 
                 final SigProfile newProfile = newProfileBuilder.build();
-/*                if (newProfile.getCredentialProviderCount() <= 0) {
-                    throw new IllegalArgumentException("Must provide at least 1 authentication method");
-                }*/
                 burp.updateProfile(profile, newProfile);
                 newProfileName = newProfile.getName();
                 setVisible(false);
@@ -149,11 +143,8 @@ public class SigProfileEditorDialog extends JDialog
     {
         if (profile != null) {
             nameTextField.setText(profile.getName());
-            //if (profile.getStaticCredentialProvider() != null) {
-             //   SigCredential credential = profile.getStaticCredentialProvider().getCredential();
-            accessKeyIdTextField.setText(profile.getAccessKeyId());
+            accessKeyTextField.setText(profile.getAccessKey());
             secretKeyTextField.setText(profile.getSecretKey());
-           //}
         }
     }
 }

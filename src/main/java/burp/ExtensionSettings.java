@@ -20,7 +20,7 @@ public class ExtensionSettings {
     // old settings file, it will just use the defaults for new settings.
     private static final double SETTINGS_VERSION = 0.0;
 
-    // ref: https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
+
     public static final long PRESIGNED_URL_LIFETIME_MIN_SECONDS = 1;
     public static final long PRESIGNED_URL_LIFETIME_MAX_SECONDS = 604800; // 7 days
     public static final long PRESIGNED_URL_LIFETIME_DEFAULT_SECONDS = 900; // 15 minutes

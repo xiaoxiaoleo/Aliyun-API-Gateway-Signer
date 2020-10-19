@@ -33,7 +33,7 @@ public class SigMessageEditorTab implements IMessageEditorTab
     public boolean isEnabled(byte[] content, boolean isRequest) {
         // enable for requests only
         if (isRequest) {
-            // we only check if its an aws request here, skipping checks for whether signing is enabled or if its in scope.
+            // we only check if its an  request here, skipping checks for whether signing is enabled or if its in scope.
             // this is because isEnabled() is only called once, so toggling in-scope only or signing enabled will have no
             // effect on current editor tabs.
             IRequestInfo requestInfo = this.burp.helpers.analyzeRequest(content);

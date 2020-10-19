@@ -10,8 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /*
-class for parsing aws cli config files.
-see https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html
+class for parsing config files.
  */
 public class ConfigParser
 {

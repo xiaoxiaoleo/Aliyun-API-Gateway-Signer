@@ -235,7 +235,7 @@ public class SigProfileImportDialog extends JDialog
 
         for (final String name : profileNames) {
             NewSigProfile newProfile = this.profileNameMap.get(name);
-            model.addRow(new Object[]{selectionMap.get(name), newProfile.sigProfile.getName(), newProfile.sigProfile.getAccessKeyIdForProfileSelection(), newProfile.source});
+            model.addRow(new Object[]{selectionMap.get(name), newProfile.sigProfile.getName(), newProfile.sigProfile.getAccessKeyForProfileSelection(), newProfile.source});
         }
     }
 
