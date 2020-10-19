@@ -1,6 +1,5 @@
 package burp;
 
-import burp.error.SigCredentialProviderException;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
@@ -144,7 +143,7 @@ public class SigProfile implements Cloneable
         return configPath;
     }
  
-    // Read profiles from an aws cli credential file. Additional properties may be read from the config
+    // Read profiles from an alibaba API gateway credential file. Additional properties may be read from the config
     // file where profile names must be specified with a "profile " prefix.
     public static List<SigProfile> fromCredentialPath(final Path path)
     {
@@ -152,7 +151,7 @@ public class SigProfile implements Cloneable
         List<SigProfile> profileList = new ArrayList<>();
         Map<String, Map<String, String>> credentials = ConfigParser.parse(path);
 
-        // get aws cli config file if it exists.
+        // get alibaba API gateway config file if it exists.
         Map<String, Map<String, String>> config = ConfigParser.parse(getCliConfigPath());
 
         // build profile list. settings in credentials file will take precedence over the config file.
@@ -200,9 +199,10 @@ public class SigProfile implements Cloneable
         if (true) {
             export += formatLine("[%s]", this.name);
             try {
-                export += this.getExportString();
-            } catch (SigCredentialProviderException exc) {
-                logger.error("Failed to export credential: "+export);
+                export += this.toString();
+            }
+            catch(Exception e){
+                logger.error("Failed to export credential: "+e.toString());
                 return "";
             }
         }
@@ -232,6 +232,6 @@ public class SigProfile implements Cloneable
 
     @Override
     public String toString() {
-        return String.format("name = '%s', keyId = '%s'", name, accessKey);
+        return String.format("access_key = %s \nsecret_key=%s\n", accessKey, secretKey);
     }
 }

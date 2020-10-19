@@ -53,23 +53,8 @@ public class SigProfileImportDialog extends JDialog
         TitledBorder importBorder= new TitledBorder("Source");
         importBorder.setTitleColor(BurpExtender.textOrange);
         importButtonPanel.setBorder(importBorder);
-/*        JButton autoImportButton = new JButton("Auto");*/
         JButton chooseImportButton = new JButton("File");
-       // JButton envImportButton = new JButton("Env");
-       // importButtonPanel.add(autoImportButton);
         importButtonPanel.add(chooseImportButton);
-       // importButtonPanel.add(envImportButton);
-
-/*        autoImportButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                final Path path = getAutoImportPath();
-                if (path != null) {
-                    importProfilesFromFile(path);
-                }
-                importProfilesFromEnvironment();
-            }
-        });*/
 
         chooseImportButton.addActionListener(new ActionListener() {
             @Override
@@ -81,12 +66,6 @@ public class SigProfileImportDialog extends JDialog
             }
         });
 
-/*        envImportButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                importProfilesFromEnvironment();
-            }
-        });*/
 
         // select all/none buttons
         JPanel selectButtonPanel = new JPanel();
@@ -123,7 +102,7 @@ public class SigProfileImportDialog extends JDialog
         });
 
         // import table
-        profileTable = new JTable(new DefaultTableModel(new Object[]{"Import", "Name", "KeyId", "Source"}, 0) {
+        profileTable = new JTable(new DefaultTableModel(new Object[]{"Import", "Name", "App Key", "Source"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 // prevent table cells from being edited. must use dialog to edit.
@@ -239,23 +218,6 @@ public class SigProfileImportDialog extends JDialog
         }
     }
 
-    private Path getAutoImportPath()
-    {
-        // favor path defined in environment. fallback to default path.
-        final String envFile = System.getenv("AWS_SHARED_CREDENTIALS_FILE");
-        if (envFile != null) {
-            Path credPath = Paths.get(envFile);
-            if (Files.exists(credPath)) {
-                return credPath;
-            }
-        }
-
-        Path credPath = Paths.get(System.getProperty("user.home"), ".aws", "credentials");
-        if (Files.exists(credPath)) {
-            return credPath;
-        }
-        return null;
-    }
 
     private Path getChosenImportPath()
     {
@@ -277,14 +239,5 @@ public class SigProfileImportDialog extends JDialog
         updateImportTable(profiles, credPath.toString());
     }
 
-/*    private void importProfilesFromEnvironment()
-    {
-        // try to import creds from environment variables
-        List<SigProfile> profiles = new ArrayList<>();
-        SigProfile profile = SigProfile.fromEnvironment();
-        if (profile != null) {
-            profiles.add(profile);
-        }
-        updateImportTable(profiles, "<html><i>environment</i></html>");
-    }*/
+
 }

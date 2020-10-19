@@ -53,7 +53,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     private static final Pattern authorizationHeaderLooseNoCaptureRegex = Pattern.compile("^Authorization:[ ]{1,20}AWS4-HMAC-SHA256[ ]{1,20}Credential=[\\w-]{0,128}/[\\w-]{0,8}/[\\w-]{0,64}/[\\w-]{0,64}/aws4_request,[ ]{1,20}SignedHeaders=[\\w;-]+,[ ]{1,20}Signature=[\\w-]{0,64}$", Pattern.CASE_INSENSITIVE);
 
     // define headers for internal use
-    public static final String HEADER_PREFIX = "X-BurpSigV4-";
+    public static final String HEADER_PREFIX = "x-ca-";
     public static final String PROFILE_HEADER_NAME = HEADER_PREFIX + "Profile"; // used to specify a named profile to sign the request with
     public static final String SKIP_SIGNING_HEADER = HEADER_PREFIX + "Skip: DO NOT SIGN"; // do not sign any requests that contain this header
 
@@ -166,7 +166,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         profileButtonPanel.add(importProfileButton);
         profileButtonPanel.add(exportProfileButton);
 
-        final String[] profileColumnNames = {"Name", "App Key", "APP Secret"};
+        final String[] profileColumnNames = {"Name", "App Key", "App Secret"};
         profileTable = new JTable(new DefaultTableModel(profileColumnNames, 0)
         {
             @Override
