@@ -1196,15 +1196,16 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         Map<String , String> headerParams = new HashMap<>();
         //headerParams.put("Accept" , "*/*");
 
-
         String httpSchema = "";
 
         headerParams = null;
 
         final byte[] body = Arrays.copyOfRange(originalRequestBytes, request.getBodyOffset(), originalRequestBytes.length);
 
+        logger.debug("======= buildHttpRequest ==========\n"+finalHeaders.toString());
+        logger.debug(String.format("appSecret: %s, reqmethod: %s, reqHost: %s, reqPath: %s, reqContentType: %s, reqAcceptType: %s",appSecret, reqMethod , reqHost , reqPath , reqContentType , acpContentType));
         finalHeaders = HttpUtil.buildHttpRequest(appSecret, httpSchema ,reqMethod , reqHost , reqPath , null , null , null  , body , reqContentType , acpContentType , headerParams);
-        logger.debug("======= final header ==========\n"+finalHeaders.toString());
+        logger.debug("=======END buildHttpRequest=============");
 
         Set<String> signedHeaderSet = getAdditionalSignedHeadersFromUI().stream().map(String::toLowerCase).collect(Collectors.toSet());
 
