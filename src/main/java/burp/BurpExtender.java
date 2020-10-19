@@ -1024,6 +1024,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         final String lineOne = allHeaders.get(0);
 
         String appSecret = signingProfile.getSecretKey();
+        String appKey = signingProfile.getAccessKey();
 
         String reqPath = lineOne.split(" ")[1];
         String reqMethod = lineOne.split(" ")[0];
@@ -1054,7 +1055,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
         logger.debug("======= buildHttpRequest ==========\n"+finalHeaders.toString());
         logger.debug(String.format("appSecret: %s, reqmethod: %s, reqHost: %s, reqPath: %s, reqContentType: %s, reqAcceptType: %s",appSecret, reqMethod , reqHost , reqPath , reqContentType , acpContentType));
-        finalHeaders = HttpUtil.buildHttpRequest(appSecret, httpSchema ,reqMethod , reqHost , reqPath , null , null , null  , body , reqContentType , acpContentType , headerParams);
+        finalHeaders = HttpUtil.buildHttpRequest(appKey, appSecret, httpSchema ,reqMethod , reqHost , reqPath , null , null , null  , body , reqContentType , acpContentType , headerParams);
         logger.debug("=======END buildHttpRequest=============");
 
         Set<String> signedHeaderSet = getAdditionalSignedHeadersFromUI().stream().map(String::toLowerCase).collect(Collectors.toSet());

@@ -39,7 +39,7 @@ import java.util.*;
  */
 public class HttpUtil {
 
-    public static List<String> buildHttpRequest(String appSecret, String protocol , String method , String host , String path , Map<String , String> pathParams , Map<String , String> queryParams ,  Map<String , String> formParams , byte[] body , String requestContentType , String acceptContentType , Map<String , String> headerParams){
+    public static List<String> buildHttpRequest(String appKey, String appSecret, String protocol , String method , String host , String path , Map<String , String> pathParams , Map<String , String> queryParams ,  Map<String , String> formParams , byte[] body , String requestContentType , String acceptContentType , Map<String , String> headerParams){
 
         List<String> finalHeaders = new ArrayList<>();
 
@@ -80,7 +80,7 @@ public class HttpUtil {
         headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_HOST , host);
 
         //
-        headerParams.put(SystemHeader.CLOUDAPI_X_CA_KEY, AppConfiguration.APP_KEY);
+        headerParams.put(SystemHeader.CLOUDAPI_X_CA_KEY, appKey);
         //
         headerParams.put(SystemHeader.CLOUDAPI_X_CA_VERSION , Constants.CLOUDAPI_CA_VERSION_VALUE);
 
