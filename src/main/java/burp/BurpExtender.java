@@ -59,7 +59,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
     protected IExtensionHelpers helpers;
     protected IBurpExtenderCallbacks callbacks;
-    private HashMap<String, SigProfile> profileKeyIdMap; // map accessKey to profile
+    private HashMap<String, SigProfile> profileAccessKeyMap; // map accessKey to profile
     private HashMap<String, SigProfile> profileNameMap; // map name to profile
     protected LogWriter logger = LogWriter.getLogger();
 
@@ -185,7 +185,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         GridBagConstraints c002 = new GridBagConstraints(); c002.gridy = 2; c002.gridx = 0; c002.anchor = GridBagConstraints.FIRST_LINE_START;
         GridBagConstraints c003 = new GridBagConstraints(); c003.gridy = 2; c003.gridx = 1; c003.anchor = GridBagConstraints.FIRST_LINE_START;
         profilePanel.add(profileLabel, c000);
-        profilePanel.add(new JLabel("<html>Add Aliyun API gateway credentials using your <i>appKey</i> and <i>appSecret</i>.</html>"), c001);
+        profilePanel.add(new JLabel("<html>Add Aliyun API gateway credentials using your <i>AppKey</i> and <i>AppSecret</i>.</html>"), c001);
         profilePanel.add(profileButtonPanel, c002);
         profilePanel.add(profileScrollPane, c003);
 
@@ -477,7 +477,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             }
         }
 
-        this.profileKeyIdMap = new HashMap<>();
+        this.profileAccessKeyMap = new HashMap<>();
         this.profileNameMap = new HashMap<>();
 
         SwingUtilities.invokeLater(new Runnable()
@@ -758,8 +758,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         return Stream.of(header)
                 .map(h -> parseSigV4AuthorizationHeader(h, false))
                 .filter(Objects::nonNull)
-                .filter(a -> this.profileKeyIdMap.containsKey(a.get("accessKey")))
-                .map(a -> this.profileKeyIdMap.get(a.get("accessKey")))
+                .filter(a -> this.profileAccessKeyMap.containsKey(a.get("accessKey")))
+                .map(a -> this.profileAccessKeyMap.get(a.get("accessKey")))
                 .findFirst()
                 .orElse(null);
     }
@@ -826,7 +826,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         if (p1 == null) {
             // profile name doesn't exist. make sure there is no keyId conflict with an existing profile
             if (profile.getAccessKeyForProfileSelection() != null) {
-                SigProfile p2 = this.profileKeyIdMap.get(profile.getAccessKeyForProfileSelection());
+                SigProfile p2 = this.profileAccessKeyMap.get(profile.getAccessKeyForProfileSelection());
                 if (p2 != null) {
                     // keyId conflict. do not add profile
                     updateStatus("Profiles must have a unique accessKey: "+profile.getName());
@@ -838,10 +838,10 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         this.profileNameMap.put(profile.getName(), profile);
 
         // refresh the keyId map
-        this.profileKeyIdMap.clear();
+        this.profileAccessKeyMap.clear();
         for (final SigProfile p : this.profileNameMap.values()) {
             if (p.getAccessKeyForProfileSelection() != null) {
-                this.profileKeyIdMap.put(p.getAccessKeyForProfileSelection(), p);
+                this.profileAccessKeyMap.put(p.getAccessKeyForProfileSelection(), p);
             }
         }
 
@@ -893,7 +893,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             updateStatus(String.format("Deleted profile '%s'", profile.getName()));
         }
         if (profile.getAccessKeyForProfileSelection() != null) {
-            this.profileKeyIdMap.remove(profile.getAccessKeyForProfileSelection());
+            this.profileAccessKeyMap.remove(profile.getAccessKeyForProfileSelection());
         }
         updateAwsProfilesUI();
     }

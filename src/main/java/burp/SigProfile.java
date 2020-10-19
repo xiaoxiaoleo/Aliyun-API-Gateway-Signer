@@ -1,7 +1,5 @@
 package burp;
 
-import org.apache.commons.lang3.StringUtils;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,7 +24,7 @@ public class SigProfile implements Cloneable
     private String accessKey;
     private String secretKey;
 
-    // see https://docs.aws.amazon.com/IAM/latest/APIReference/API_AccessKey.html
+    //
     public static final Pattern profileNamePattern = Pattern.compile("^[\\w+=,.@-]{1,64}$");
     public static final Pattern accessKeyPattern = Pattern.compile("^[\\w]{5,20}$");
     public static final Pattern secretKeyPattern = Pattern.compile("^[a-zA-Z0-9/+]{1,128}$"); // base64 characters. not sure on length
@@ -76,14 +74,6 @@ public class SigProfile implements Cloneable
         else
             throw new IllegalArgumentException("Profile secret key must match pattern " + secretKeyPattern.pattern());
     }
-/*
-    private void setCredentialProvider(final SigCredentialProvider provider, final int priority) {
-        if (provider == null) {
-            throw new IllegalArgumentException("Cannot set a null credential provider");
-        }
-        this.credentialProviders.put(provider.getName(), provider);
-        this.credentialProvidersPriority.put(provider.getName(), priority);
-    }*/
 
     public static class Builder {
         private SigProfile profile;
@@ -102,12 +92,6 @@ public class SigProfile implements Cloneable
             this.profile.setSecretKey(secretKey);
             return this;
         }
-/*        public Builder withCredentialProvider(final SigCredentialProvider provider, final int priority) {
-            // should only have 1 of each type: permanent/static, assumeRole, etc
-            this.profile.setCredentialProvider(provider, priority);
-            return this;
-        }
-        */
         public SigProfile build() {
             return this.profile;
         }
@@ -125,9 +109,6 @@ public class SigProfile implements Cloneable
         setName(name);
         this.accessKey = null;
         this.secretKey = null;
-        /*
-        this.credentialProviders = new HashMap<>();
-        this.credentialProvidersPriority = new HashMap<>();*/
     }
 
     private static Path getCliConfigPath()
@@ -162,18 +143,18 @@ public class SigProfile implements Cloneable
             section.putAll(config.getOrDefault("profile "+name, new HashMap<>()));
             section.putAll(credentials.getOrDefault(name, new HashMap<>()));
 
-            if ((section.containsKey("access_key") && section.containsKey("secret_key")) || section.containsKey("source_profile")) {
-                String accessKey = section.getOrDefault("access_key", null);
-                String secretKey = section.getOrDefault("secret_key", null);
+            if ((section.containsKey("AppKey") && section.containsKey("SecretKey")) || section.containsKey("source_profile")) {
+                String accessKey = section.getOrDefault("AppKey", null);
+                String secretKey = section.getOrDefault("SecretKey", null);
                 // if source_profile exists, check that profile for creds.
                 if (section.containsKey("source_profile")) {
                     final String source = section.get("source_profile");
                     Map<String, String> sourceSection = new HashMap<>();
                     sourceSection.putAll(config.getOrDefault("profile "+source, new HashMap<>()));
                     sourceSection.putAll(credentials.getOrDefault(source, new HashMap<>()));
-                    if (sourceSection.containsKey("access_key") && sourceSection.containsKey("secret_key")) {
-                        accessKey = sourceSection.get("access_key");
-                        secretKey = sourceSection.get("secret_key");
+                    if (sourceSection.containsKey("AppKey") && sourceSection.containsKey("SecretKey")) {
+                        accessKey = sourceSection.get("AppKey");
+                        secretKey = sourceSection.get("SecretKey");
 
                     }
                     else {
@@ -232,6 +213,6 @@ public class SigProfile implements Cloneable
 
     @Override
     public String toString() {
-        return String.format("access_key = %s \nsecret_key=%s\n", accessKey, secretKey);
+        return String.format("AppKey = %s \nSecretKey=%s\n", accessKey, secretKey);
     }
 }

@@ -76,7 +76,7 @@ public class SigProfileEditorReadOnlyDialog extends SigProfileEditorDialog
     public void disableForEdit()
     {
         disableField(this.nameTextField);
-        //disableField(this.profileKeyIdTextField);
+        //disableField(this.profileAccessKeyTextField);
         disableField(this.secretKeyTextField);
         //disableField(this.sessionTokenTextField);
 
