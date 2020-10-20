@@ -17,8 +17,8 @@ public class SigProfileEditorDialog extends JDialog
     protected JButton okButton;
     protected JPanel providerPanel;
 
-    private JTextField accessKeyTextField;
-    protected JTextField secretKeyTextField;
+    private JTextField appKeyTextField;
+    protected JTextField appSecretTextField;
     private JLabel statusLabel;
     private String newProfileName = null;
 
@@ -75,12 +75,12 @@ public class SigProfileEditorDialog extends JDialog
         JPanel staticCredentialsPanel = new JPanel(new GridBagLayout());
         staticCredentialsPanel.setBorder(new TitledBorder("Credentials"));
 
-        staticCredentialsPanel.add(new JLabel("AccessKey"), newConstraint(0, 0, GridBagConstraints.LINE_START));
-        this.accessKeyTextField = new JTextFieldHint("", TEXT_FIELD_WIDTH-3, "Required");
-        staticCredentialsPanel.add(accessKeyTextField, newConstraint(1, 0));
-        staticCredentialsPanel.add(new JLabel("SecretKey"), newConstraint(0, 1, GridBagConstraints.LINE_START));
-        this.secretKeyTextField = new JTextFieldHint("", TEXT_FIELD_WIDTH-3, "Required");
-        staticCredentialsPanel.add(secretKeyTextField, newConstraint(1, 1));
+        staticCredentialsPanel.add(new JLabel("appKey"), newConstraint(0, 0, GridBagConstraints.LINE_START));
+        this.appKeyTextField = new JTextFieldHint("", TEXT_FIELD_WIDTH-3, "Required");
+        staticCredentialsPanel.add(appKeyTextField, newConstraint(1, 0));
+        staticCredentialsPanel.add(new JLabel("appSecret"), newConstraint(0, 1, GridBagConstraints.LINE_START));
+        this.appSecretTextField = new JTextFieldHint("", TEXT_FIELD_WIDTH-3, "Required");
+        staticCredentialsPanel.add(appSecretTextField, newConstraint(1, 1));
         providerPanel.add(staticCredentialsPanel, newConstraint(0, providerPanelY++, GridBagConstraints.LINE_START));
 
 
@@ -102,15 +102,15 @@ public class SigProfileEditorDialog extends JDialog
         });
         okButton.addActionListener(actionEvent -> {
             //SigAssumeRoleCredentialProvider assumeRole = null;
-            final String accessKey = accessKeyTextField.getText();
-            final String secretKey = secretKeyTextField.getText();
+            final String appKey = appKeyTextField.getText();
+            final String appSecret = appSecretTextField.getText();
 
             try {
                 SigProfile.Builder newProfileBuilder = new SigProfile.Builder(nameTextField.getText());
 
                 // if any cred fields are specified, attempt to use them.
-                if (!accessKey.equals("") || !secretKey.equals("") ) {
-                    newProfileBuilder.withAccessKeySecretKey(accessKeyTextField.getText(), secretKeyTextField.getText());
+                if (!appKey.equals("") || !appSecret.equals("") ) {
+                    newProfileBuilder.withappKeyappSecret(appKeyTextField.getText(), appSecretTextField.getText());
                 }
 
                 final SigProfile newProfile = newProfileBuilder.build();
@@ -143,8 +143,8 @@ public class SigProfileEditorDialog extends JDialog
     {
         if (profile != null) {
             nameTextField.setText(profile.getName());
-            accessKeyTextField.setText(profile.getAccessKey());
-            secretKeyTextField.setText(profile.getSecretKey());
+            appKeyTextField.setText(profile.getappKey());
+            appSecretTextField.setText(profile.getappSecret());
         }
     }
 }

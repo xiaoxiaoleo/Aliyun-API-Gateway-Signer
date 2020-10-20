@@ -102,7 +102,7 @@ public class SigProfileImportDialog extends JDialog
         });
 
         // import table
-        profileTable = new JTable(new DefaultTableModel(new Object[]{"Import", "Name", "App Key", "Source"}, 0) {
+        profileTable = new JTable(new DefaultTableModel(new Object[]{"Import", "Name", "APP Key", "Source"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 // prevent table cells from being edited. must use dialog to edit.
@@ -214,7 +214,7 @@ public class SigProfileImportDialog extends JDialog
 
         for (final String name : profileNames) {
             NewSigProfile newProfile = this.profileNameMap.get(name);
-            model.addRow(new Object[]{selectionMap.get(name), newProfile.sigProfile.getName(), newProfile.sigProfile.getAccessKeyForProfileSelection(), newProfile.source});
+            model.addRow(new Object[]{selectionMap.get(name), newProfile.sigProfile.getName(), newProfile.sigProfile.getappKeyForProfileSelection(), newProfile.source});
         }
     }
 

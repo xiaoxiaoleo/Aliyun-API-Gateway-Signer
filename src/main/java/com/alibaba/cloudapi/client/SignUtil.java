@@ -24,7 +24,7 @@ import com.alibaba.cloudapi.client.constant.HttpHeader;
 import com.alibaba.cloudapi.client.constant.SystemHeader;
 
 import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.spec.appSecretSpec;
 import java.util.Base64;
 import java.util.Map;
 import java.util.TreeMap;
@@ -42,7 +42,7 @@ public class SignUtil {
         try {
             Mac hmacSha256 = Mac.getInstance(Constants.CLOUDAPI_HMAC);
             byte[] keyBytes = appSecret.getBytes(Constants.CLOUDAPI_ENCODING);
-            hmacSha256.init(new SecretKeySpec(keyBytes, 0, keyBytes.length, Constants.CLOUDAPI_HMAC));
+            hmacSha256.init(new appSecretSpec(keyBytes, 0, keyBytes.length, Constants.CLOUDAPI_HMAC));
 
             //
             String signString = buildStringToSign(method , headersParams , pathWithParameter , queryParams , formParam);

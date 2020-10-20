@@ -20,37 +20,37 @@ public class SigProfile implements Cloneable
     private static final transient LogWriter logger = LogWriter.getLogger();
 
     private String name;
-    // accessKey is used to uniquely identify this profile for signing
-    private String accessKey;
-    private String secretKey;
+    // appKey is used to uniquely identify this profile for signing
+    private String appKey;
+    private String appSecret;
 
     //
     public static final Pattern profileNamePattern = Pattern.compile("^[\\w+=,.@-]{1,64}$");
-    public static final Pattern accessKeyPattern = Pattern.compile("^[\\w]{5,20}$");
-    public static final Pattern secretKeyPattern = Pattern.compile("^[a-zA-Z0-9/+]{1,128}$"); // base64 characters. not sure on length
+    public static final Pattern appKeyPattern = Pattern.compile("^[\\w]{5,20}$");
+    public static final Pattern appSecretPattern = Pattern.compile("^[a-zA-Z0-9/+]{1,128}$"); // base64 characters. not sure on length
 
     public String getName() { return this.name; }
 
 
-    // NOTE that this value is used for matching incoming requests only and DOES NOT represent the accessKey
+    // NOTE that this value is used for matching incoming requests only and DOES NOT represent the appKey
     // used to sign the request
-    public String getAccessKey() { return this.accessKey; }
-    public String getSecretKey() { return this.secretKey; }
+    public String getappKey() { return this.appKey; }
+    public String getappSecret() { return this.appSecret; }
     /*
-    get the signature accessKey that should be used for selecting this profile
+    get the signature appKey that should be used for selecting this profile
      */
-    public String getAccessKeyForProfileSelection()
+    public String getappKeyForProfileSelection()
     {
-        if (getAccessKey() != null) {
-            return getAccessKey();
+        if (getappKey() != null) {
+            return getappKey();
         }
         return null;
     }
 
-    public String getSecretKeyForProfileSelection()
+    public String getappSecretForProfileSelection()
     {
-        if (getSecretKey() != null) {
-            return getSecretKey();
+        if (getappSecret() != null) {
+            return getappSecret();
         }
         return null;
     }
@@ -61,18 +61,18 @@ public class SigProfile implements Cloneable
             throw new IllegalArgumentException("Profile name must match pattern "+profileNamePattern.pattern());
     }
 
-    private void setAccessKey(final String accessKey) {
-        if (accessKeyPattern.matcher(accessKey).matches())
-            this.accessKey = accessKey;
+    private void setappKey(final String appKey) {
+        if (appKeyPattern.matcher(appKey).matches())
+            this.appKey = appKey;
         else
-            throw new IllegalArgumentException("Profile accessKey must match pattern " + accessKeyPattern.pattern());
+            throw new IllegalArgumentException("Profile appKey must match pattern " + appKeyPattern.pattern());
     }
 
-    private void setSecretKey(final String secretKey) {
-        if (secretKeyPattern.matcher(secretKey).matches())
-            this.secretKey = secretKey;
+    private void setappSecret(final String appSecret) {
+        if (appSecretPattern.matcher(appSecret).matches())
+            this.appSecret = appSecret;
         else
-            throw new IllegalArgumentException("Profile secret key must match pattern " + secretKeyPattern.pattern());
+            throw new IllegalArgumentException("Profile secret key must match pattern " + appSecretPattern.pattern());
     }
 
     public static class Builder {
@@ -83,13 +83,13 @@ public class SigProfile implements Cloneable
         public Builder(final SigProfile profile) {
             this.profile = profile.clone();
         }
-        public Builder withAccessKey(final String accessKey) {
-            this.profile.setAccessKey(accessKey);
+        public Builder withappKey(final String appKey) {
+            this.profile.setappKey(appKey);
             return this;
         }
-        public Builder withAccessKeySecretKey(final String accessKey, final String secretKey) {
-            this.profile.setAccessKey(accessKey);
-            this.profile.setSecretKey(secretKey);
+        public Builder withappKeyappSecret(final String appKey, final String appSecret) {
+            this.profile.setappKey(appKey);
+            this.profile.setappSecret(appSecret);
             return this;
         }
         public SigProfile build() {
@@ -107,8 +107,8 @@ public class SigProfile implements Cloneable
     private SigProfile(final String name)
     {
         setName(name);
-        this.accessKey = null;
-        this.secretKey = null;
+        this.appKey = null;
+        this.appSecret = null;
     }
 
     private static Path getCliConfigPath()
@@ -143,18 +143,18 @@ public class SigProfile implements Cloneable
             section.putAll(config.getOrDefault("profile "+name, new HashMap<>()));
             section.putAll(credentials.getOrDefault(name, new HashMap<>()));
 
-            if ((section.containsKey("AppKey") && section.containsKey("SecretKey")) || section.containsKey("source_profile")) {
-                String accessKey = section.getOrDefault("AppKey", null);
-                String secretKey = section.getOrDefault("SecretKey", null);
+            if ((section.containsKey("AppKey") && section.containsKey("appSecret")) || section.containsKey("source_profile")) {
+                String appKey = section.getOrDefault("AppKey", null);
+                String appSecret = section.getOrDefault("appSecret", null);
                 // if source_profile exists, check that profile for creds.
                 if (section.containsKey("source_profile")) {
                     final String source = section.get("source_profile");
                     Map<String, String> sourceSection = new HashMap<>();
                     sourceSection.putAll(config.getOrDefault("profile "+source, new HashMap<>()));
                     sourceSection.putAll(credentials.getOrDefault(source, new HashMap<>()));
-                    if (sourceSection.containsKey("AppKey") && sourceSection.containsKey("SecretKey")) {
-                        accessKey = sourceSection.get("AppKey");
-                        secretKey = sourceSection.get("SecretKey");
+                    if (sourceSection.containsKey("AppKey") && sourceSection.containsKey("appSecret")) {
+                        appKey = sourceSection.get("AppKey");
+                        appSecret = sourceSection.get("appSecret");
 
                     }
                     else {
@@ -163,7 +163,7 @@ public class SigProfile implements Cloneable
                     }
                 }
 
-                SigProfile.Builder newProfileBuilder = new SigProfile.Builder(name).withAccessKeySecretKey(accessKey,secretKey);
+                SigProfile.Builder newProfileBuilder = new SigProfile.Builder(name).withappKeyappSecret(appKey,appSecret);
                 profileList.add(newProfileBuilder.build());
             }
         }
@@ -213,6 +213,6 @@ public class SigProfile implements Cloneable
 
     @Override
     public String toString() {
-        return String.format("AppKey = %s \nSecretKey=%s\n", accessKey, secretKey);
+        return String.format("AppKey = %s \nappSecret=%s\n", appKey, appSecret);
     }
 }

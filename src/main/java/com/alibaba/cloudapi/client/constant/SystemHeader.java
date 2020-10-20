@@ -33,7 +33,7 @@ public class SystemHeader {
     public static final String CLOUDAPI_X_CA_TIMESTAMP = "X-Ca-timestamp";
     //
     public static final String CLOUDAPI_X_CA_NONCE = "x-ca-nonce";
-    //APP KEY
+    //APP Key
     public static final String CLOUDAPI_X_CA_KEY = "x-ca-key";
     //
     public static final String CLOUDAPI_X_CA_VERSION = "CA_VERSION";

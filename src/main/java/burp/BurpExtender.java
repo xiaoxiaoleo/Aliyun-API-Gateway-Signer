@@ -48,8 +48,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     private static final String NO_DEFAULT_PROFILE = "        "; // ensure combobox is visible. SigProfile.profileNamePattern doesn't allow this name
 
     // Regex for extracting usable signature fields and for just identifying a request as SigV4 (loose)
-    private static final Pattern authorizationHeaderRegex = Pattern.compile("^x-ca-signature:[ ]{1,20}AWS4-HMAC-SHA256[ ]{1,20}Credential=(?<accessKey>[\\w]{16,128})/(?<date>[0-9]{8})/(?<region>[a-z0-9-]{5,64})/(?<service>[a-z0-9-]{1,64})/aws4_request,[ ]{1,20}SignedHeaders=(?<headers>[\\w;-]+),[ ]{1,20}Signature=(?<signature>[a-z0-9]{64})$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern authorizationHeaderLooseRegex = Pattern.compile("^Authorization:[ ]{1,20}AWS4-HMAC-SHA256[ ]{1,20}Credential=(?<accessKey>[\\w-]{0,128})/(?<date>[\\w-]{0,8})/(?<region>[\\w-]{0,64})/(?<service>[\\w-]{0,64})/aws4_request,[ ]{1,20}SignedHeaders=(?<headers>[\\w;-]+),[ ]{1,20}Signature=(?<signature>[\\w-]{0,64})$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern authorizationHeaderRegex = Pattern.compile("^x-ca-signature:[ ]{1,20}AWS4-HMAC-SHA256[ ]{1,20}Credential=(?<appKey>[\\w]{16,128})/(?<date>[0-9]{8})/(?<region>[a-z0-9-]{5,64})/(?<service>[a-z0-9-]{1,64})/aws4_request,[ ]{1,20}SignedHeaders=(?<headers>[\\w;-]+),[ ]{1,20}Signature=(?<signature>[a-z0-9]{64})$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern authorizationHeaderLooseRegex = Pattern.compile("^Authorization:[ ]{1,20}AWS4-HMAC-SHA256[ ]{1,20}Credential=(?<appKey>[\\w-]{0,128})/(?<date>[\\w-]{0,8})/(?<region>[\\w-]{0,64})/(?<service>[\\w-]{0,64})/aws4_request,[ ]{1,20}SignedHeaders=(?<headers>[\\w;-]+),[ ]{1,20}Signature=(?<signature>[\\w-]{0,64})$", Pattern.CASE_INSENSITIVE);
     private static final Pattern authorizationHeaderLooseNoCaptureRegex = Pattern.compile("^Authorization:[ ]{1,20}AWS4-HMAC-SHA256[ ]{1,20}Credential=[\\w-]{0,128}/[\\w-]{0,8}/[\\w-]{0,64}/[\\w-]{0,64}/aws4_request,[ ]{1,20}SignedHeaders=[\\w;-]+,[ ]{1,20}Signature=[\\w-]{0,64}$", Pattern.CASE_INSENSITIVE);
 
     // define headers for internal use
@@ -59,7 +59,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
     protected IExtensionHelpers helpers;
     protected IBurpExtenderCallbacks callbacks;
-    private HashMap<String, SigProfile> profileAccessKeyMap; // map accessKey to profile
+    private HashMap<String, SigProfile> profileappKeyMap; // map appKey to profile
     private HashMap<String, SigProfile> profileNameMap; // map name to profile
     protected LogWriter logger = LogWriter.getLogger();
 
@@ -166,7 +166,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         profileButtonPanel.add(importProfileButton);
         profileButtonPanel.add(exportProfileButton);
 
-        final String[] profileColumnNames = {"Name", "App Key", "App Secret"};
+        final String[] profileColumnNames = {"Name", "APP Key", "APP Secret"};
         profileTable = new JTable(new DefaultTableModel(profileColumnNames, 0)
         {
             @Override
@@ -477,7 +477,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             }
         }
 
-        this.profileAccessKeyMap = new HashMap<>();
+        this.profileappKeyMap = new HashMap<>();
         this.profileNameMap = new HashMap<>();
 
         SwingUtilities.invokeLater(new Runnable()
@@ -753,13 +753,13 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         return list;
     }
 
-    // check Authorization header for AccessKey and return matching profile or null.
+    // check Authorization header for appKey and return matching profile or null.
     private SigProfile profileFromAuthorizationHeader(final String header) {
         return Stream.of(header)
                 .map(h -> parseSigV4AuthorizationHeader(h, false))
                 .filter(Objects::nonNull)
-                .filter(a -> this.profileAccessKeyMap.containsKey(a.get("accessKey")))
-                .map(a -> this.profileAccessKeyMap.get(a.get("accessKey")))
+                .filter(a -> this.profileappKeyMap.containsKey(a.get("appKey")))
+                .map(a -> this.profileappKeyMap.get(a.get("appKey")))
                 .findFirst()
                 .orElse(null);
     }
@@ -774,7 +774,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         Matcher matcher = pattern.matcher(header);
         if (matcher.matches()) {
             signature = new HashMap<>(Map.of(
-                    "x-ca-key", matcher.group("accessKey"),
+                    "x-ca-key", matcher.group("appKey"),
                     "date", matcher.group("date"),
                     SystemHeader.CLOUDAPI_X_CA_SIGNATURE, matcher.group("x-ca-headers")
             ));
@@ -811,7 +811,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
         for (final String name : getSortedProfileNames()) {
             SigProfile profile = this.profileNameMap.get(name);
-            model.addRow(new Object[]{profile.getName(), profile.getAccessKeyForProfileSelection(), profile.getSecretKeyForProfileSelection()});
+            model.addRow(new Object[]{profile.getName(), profile.getappKeyForProfileSelection(), profile.getappSecretForProfileSelection()});
             defaultProfileComboBox.addItem(name);
         }
         setDefaultProfileName(defaultProfileName);
@@ -825,12 +825,12 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         final SigProfile p1 = this.profileNameMap.get(profile.getName());
         if (p1 == null) {
             // profile name doesn't exist. make sure there is no keyId conflict with an existing profile
-            if (profile.getAccessKeyForProfileSelection() != null) {
-                SigProfile p2 = this.profileAccessKeyMap.get(profile.getAccessKeyForProfileSelection());
+            if (profile.getappKeyForProfileSelection() != null) {
+                SigProfile p2 = this.profileappKeyMap.get(profile.getappKeyForProfileSelection());
                 if (p2 != null) {
                     // keyId conflict. do not add profile
-                    updateStatus("Profiles must have a unique accessKey: "+profile.getName());
-                    throw new IllegalArgumentException(String.format("Profiles must have a unique accessKey: %s = %s", profile.getName(), p2.getName()));
+                    updateStatus("Profiles must have a unique appKey: "+profile.getName());
+                    throw new IllegalArgumentException(String.format("Profiles must have a unique appKey: %s = %s", profile.getName(), p2.getName()));
                 }
             }
         }
@@ -838,10 +838,10 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         this.profileNameMap.put(profile.getName(), profile);
 
         // refresh the keyId map
-        this.profileAccessKeyMap.clear();
+        this.profileappKeyMap.clear();
         for (final SigProfile p : this.profileNameMap.values()) {
-            if (p.getAccessKeyForProfileSelection() != null) {
-                this.profileAccessKeyMap.put(p.getAccessKeyForProfileSelection(), p);
+            if (p.getappKeyForProfileSelection() != null) {
+                this.profileappKeyMap.put(p.getappKeyForProfileSelection(), p);
             }
         }
 
@@ -892,8 +892,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             this.profileNameMap.remove(profile.getName());
             updateStatus(String.format("Deleted profile '%s'", profile.getName()));
         }
-        if (profile.getAccessKeyForProfileSelection() != null) {
-            this.profileAccessKeyMap.remove(profile.getAccessKeyForProfileSelection());
+        if (profile.getappKeyForProfileSelection() != null) {
+            this.profileappKeyMap.remove(profile.getappKeyForProfileSelection());
         }
         updateAwsProfilesUI();
     }
@@ -975,7 +975,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     public SigProfile getSigningProfile(final List<String> headers)
     {
         // check for http header that specifies a signing profile. if not specified in the header,
-        // use the default profile. lastly, check Authorization header for an accessKey that matches
+        // use the default profile. lastly, check Authorization header for an appKey that matches
         // an existing profile.
         // XXX if a non-existent profile is specified in the header, error out?
         SigProfile signingProfile = headers.stream()
@@ -1023,24 +1023,26 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         //
         final String lineOne = allHeaders.get(0);
 
-        String appSecret = signingProfile.getSecretKey();
-        String appKey = signingProfile.getAccessKey();
+        String appSecret = signingProfile.getappSecret();
+        String appKey = signingProfile.getappKey();
 
         String reqPath = lineOne.split(" ")[1];
         String reqMethod = lineOne.split(" ")[0];
         String reqHost = "invaild.host.name";
         String reqContentType = "application/json";
         String acpContentType = "*/*";
-
-        for(String item:allHeaders){
-            if (item.toLowerCase().contains("host")){
-                reqHost = item.substring(6);
+        for (final String header : allHeaders) {
+            final String[] tokens = splitHeader(header);
+            final String name = tokens[0];
+            final String value = tokens[1];
+            if (name.toLowerCase().contains("host")){
+                reqHost = value;
             }
-            if (item.toLowerCase().contains("content-type")){
-                reqContentType = item.substring(14);
+            if (name.toLowerCase().contains("content-type")){
+                reqContentType = value;
             }
-            if (item.toLowerCase().contains("accept-type")){
-                reqContentType = item.substring(13);
+            if (name.toLowerCase().contains("accept-type")){
+                reqContentType = value;
             }
         }
 
