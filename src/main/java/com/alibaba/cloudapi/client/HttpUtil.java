@@ -21,8 +21,9 @@ package com.alibaba.cloudapi.client;
 
 import com.alibaba.cloudapi.client.constant.Constants;
 import com.alibaba.cloudapi.client.constant.HttpHeader;
+import com.alibaba.cloudapi.client.constant.HttpMethod;
+import com.alibaba.cloudapi.client.constant.ContentType;
 import com.alibaba.cloudapi.client.constant.SystemHeader;
-import okhttp3.Headers;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 
@@ -34,12 +35,28 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 
-/**
- * Created by fred on 16/9/7.
- */
+
 public class HttpUtil {
 
-    public static List<String> buildHttpRequest(String appKey, String appSecret, String protocol , String method , String host , String path , Map<String , String> pathParams , Map<String , String> queryParams ,  Map<String , String> formParams , byte[] body , String requestContentType , String acceptContentType , Map<String , String> headerParams){
+    public static List<String> httpGet(String appKey, String appSecret, String[] signHeaders, String host, String path , Map<String , String> queryParams , Map<String , String> headerParams)
+    {
+
+        List<String> request = buildHttpRequest(appKey, appSecret , signHeaders, HttpMethod.CLOUDAPI_GET, host , path , null , queryParams , null  , null , ContentType.CLOUDAPI_CONTENT_TYPE_FORM , ContentType.CLOUDAPI_CONTENT_TYPE_JSON , headerParams);
+        return request;
+    }
+    public static List<String> httpPostForm(String appKey, String appSecret, String[] signHeaders, String host, String path , Map<String , String> queryParams , Map<String , String> formParams , Map<String , String> headerParams)
+    {
+        List<String> request = buildHttpRequest(appKey, appSecret ,signHeaders,  HttpMethod.CLOUDAPI_POST , host , path , null , queryParams , formParams , null , ContentType.CLOUDAPI_CONTENT_TYPE_FORM , ContentType.CLOUDAPI_CONTENT_TYPE_JSON , headerParams);
+        return request;
+    }
+
+    public  static List<String> httpPostBytes(String appKey, String appSecret, String[] signHeaders, String host, String path , Map<String , String> queryParams , byte[] body , Map<String , String> headerParams )
+    {
+        List<String> request = buildHttpRequest(appKey, appSecret , signHeaders, HttpMethod.CLOUDAPI_POST , host , path , null , queryParams , null  , body , ContentType.CLOUDAPI_CONTENT_TYPE_STREAM , ContentType.CLOUDAPI_CONTENT_TYPE_JSON , headerParams);
+        return request;
+    }
+
+    private  static List<String> buildHttpRequest(String appKey, String appSecret, String[] signHeaders, String method , String host , String path , Map<String , String> pathParams , Map<String , String> queryParams ,  Map<String , String> formParams , byte[] body , String requestContentType , String acceptContentType , Map<String , String> headerParams){
 
         List<String> finalHeaders = new ArrayList<>();
 
@@ -47,13 +64,6 @@ public class HttpUtil {
          */
         String pathWithPathParameter = HttpUtil.combinePathParam(path , pathParams);
 
-        /**
-         */
-/*        StringBuilder url = new StringBuilder().append(protocol).append(host).append(pathWithPathParameter);
-
-        if(null != queryParams && queryParams.size() > 0){
-            url.append("?").append(buildParamString(queryParams));
-        }*/
 
         if(null == headerParams){
             headerParams = new HashMap<String, String>();
@@ -65,32 +75,37 @@ public class HttpUtil {
         headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_DATE , HttpUtil.getHttpDateHeaderValue(current));
         //headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_DATE , "Sun, 18 Oct 2020 16:42:59 GMT");
 
-        //
-        headerParams.put(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP, String.valueOf(current.getTime()));
-        //headerParams.put(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP, String.valueOf("1603039241373"));
+        for(String header : signHeaders){
+            if(header.contains(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP)){
+                headerParams.put(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP, String.valueOf(current.getTime()));
+                //headerParams.put(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP, String.valueOf("1603039241373"));
+            }
+        }
+
 
         //
         headerParams.put(SystemHeader.CLOUDAPI_X_CA_NONCE, UUID.randomUUID().toString());
         //headerParams.put(SystemHeader.CLOUDAPI_X_CA_NONCE, "22791fae-891d-489d-9597-cd881e987715");
 
         //
-        headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_USER_AGENT, Constants.CLOUDAPI_USER_AGENT);
+        //headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_USER_AGENT, Constants.CLOUDAPI_USER_AGENT);
 
         //
         headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_HOST , host);
 
         //
-        headerParams.put(SystemHeader.CLOUDAPI_X_CA_KEY, appKey);
+/*        headerParams.put(SystemHeader.CLOUDAPI_X_CA_KEY, appKey);
         //
-        headerParams.put(SystemHeader.CLOUDAPI_X_CA_VERSION , Constants.CLOUDAPI_CA_VERSION_VALUE);
+        headerParams.put(SystemHeader.CLOUDAPI_X_CA_VERSION , Constants.CLOUDAPI_CA_VERSION_VALUE);*/
 
         //
-        headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_CONTENT_TYPE , requestContentType);
+
+        //headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_CONTENT_TYPE , requestContentType);
 
         //
-        headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_ACCEPT , acceptContentType);
-
-        headerParams.put(SystemHeader.CLOUDAPI_X_CA_SIGNATURE_METHOD, Constants.CLOUDAPI_HMAC);
+        //headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_ACCEPT , acceptContentType);
+/*
+        headerParams.put(SystemHeader.CLOUDAPI_X_CA_SIGNATURE_METHOD, Constants.CLOUDAPI_HMAC);*/
 
         /**
          */
@@ -107,7 +122,7 @@ public class HttpUtil {
 
         /**
          */
-        headerParams.put(SystemHeader.CLOUDAPI_X_CA_SIGNATURE , SignUtil.sign(appSecret, method , headerParams , pathWithPathParameter , queryParams , formParams));
+        headerParams.put(SystemHeader.CLOUDAPI_X_CA_SIGNATURE, SignUtil.sign(appSecret, signHeaders, method , headerParams , pathWithPathParameter , queryParams , formParams));
 
         /**
          */
@@ -118,6 +133,8 @@ public class HttpUtil {
                 headerParams.put(key , new String(temp , Constants.CLOUDAPI_HEADER_ENCODING));
             }
         }
+
+
 
 
 /*        for (String keys : headerParams.keySet())
@@ -131,7 +148,7 @@ public class HttpUtil {
         }
 
         //Headers headers = Headers.of(headerParams);
-
+        finalHeaders.sort(String.CASE_INSENSITIVE_ORDER);
         return finalHeaders;
     }
 

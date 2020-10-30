@@ -16,23 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package com.alibaba.cloudapi.client.constant;
 
 /**
  * Created by fred on 16/9/7.
  */
-public class HttpHeader {
+public class ContentType {
     //
-    public static final String CLOUDAPI_HTTP_HEADER_ACCEPT = "accept";
+    public static final String CLOUDAPI_CONTENT_TYPE_FORM = "application/x-www-form-urlencoded; charset=UTF-8";
     //
-    public static final String CLOUDAPI_HTTP_HEADER_CONTENT_MD5 = "content-md5";
+    public static final String CLOUDAPI_CONTENT_TYPE_STREAM = "application/octet-stream; charset=UTF-8";
     //
-    public static final String CLOUDAPI_HTTP_HEADER_CONTENT_TYPE = "content-type";
+    public static final String CLOUDAPI_CONTENT_TYPE_JSON = "application/json";
     //
-    public static final String CLOUDAPI_HTTP_HEADER_USER_AGENT = "User-Agent";
+    public static final String CLOUDAPI_CONTENT_TYPE_JSON_UTF8 = "application/json; charset=UTF-8";
     //
-    public static final String CLOUDAPI_HTTP_HEADER_DATE = "Date";
+    public static final String CLOUDAPI_CONTENT_TYPE_XML = "application/xml; charset=UTF-8";
     //
-    public static final String CLOUDAPI_HTTP_HEADER_HOST = "Host";
+    public static final String CLOUDAPI_CONTENT_TYPE_TEXT = "application/text; charset=UTF-8";
+
+    public static final String CLOUDAPI_CONTENT_TYPE_ALL = "*/*";
+
 }

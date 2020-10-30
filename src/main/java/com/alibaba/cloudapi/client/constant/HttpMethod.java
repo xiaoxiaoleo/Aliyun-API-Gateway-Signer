@@ -22,17 +22,13 @@ package com.alibaba.cloudapi.client.constant;
 /**
  * Created by fred on 16/9/7.
  */
-public class HttpHeader {
-    //
-    public static final String CLOUDAPI_HTTP_HEADER_ACCEPT = "accept";
-    //
-    public static final String CLOUDAPI_HTTP_HEADER_CONTENT_MD5 = "content-md5";
-    //
-    public static final String CLOUDAPI_HTTP_HEADER_CONTENT_TYPE = "content-type";
-    //
-    public static final String CLOUDAPI_HTTP_HEADER_USER_AGENT = "User-Agent";
-    //
-    public static final String CLOUDAPI_HTTP_HEADER_DATE = "Date";
-    //
-    public static final String CLOUDAPI_HTTP_HEADER_HOST = "Host";
+public class HttpMethod {
+    //GET
+    public static final String CLOUDAPI_GET = "GET";
+    //POST
+    public static final String CLOUDAPI_POST = "POST";
+    //PUT
+    public static final String CLOUDAPI_PUT = "PUT";
+    //DELETE
+    public static final String CLOUDAPI_DELETE = "DELETE";
 }

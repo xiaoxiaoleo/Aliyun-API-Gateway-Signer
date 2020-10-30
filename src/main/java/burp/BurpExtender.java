@@ -1,16 +1,12 @@
 package burp;
 
+import com.alibaba.cloudapi.client.constant.Constants;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-
-import com.alibaba.cloudapi.client.AppConfiguration;
-import com.alibaba.cloudapi.client.constant.ContentType;
-import com.alibaba.cloudapi.client.constant.HttpSchema;
 import com.alibaba.cloudapi.client.HttpUtil;
-import com.alibaba.cloudapi.client.constant.HttpMethod;
 import com.alibaba.cloudapi.client.constant.SystemHeader;
 
 
@@ -21,6 +17,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -32,7 +31,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 
-public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtensionStateListener, IMessageEditorTabFactory, IContextMenuFactory
+public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtensionStateListener, IContextMenuFactory
 {
     // make sure to update version in build.gradle as well
     private static final String EXTENSION_VERSION = "0.1.0";
@@ -47,20 +46,13 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
     private static final String NO_DEFAULT_PROFILE = "        "; // ensure combobox is visible. SigProfile.profileNamePattern doesn't allow this name
 
-    // Regex for extracting usable signature fields and for just identifying a request as SigV4 (loose)
-    private static final Pattern authorizationHeaderRegex = Pattern.compile("^x-ca-signature:[ ]{1,20}AWS4-HMAC-SHA256[ ]{1,20}Credential=(?<appKey>[\\w]{16,128})/(?<date>[0-9]{8})/(?<region>[a-z0-9-]{5,64})/(?<service>[a-z0-9-]{1,64})/aws4_request,[ ]{1,20}SignedHeaders=(?<headers>[\\w;-]+),[ ]{1,20}Signature=(?<signature>[a-z0-9]{64})$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern authorizationHeaderLooseRegex = Pattern.compile("^Authorization:[ ]{1,20}AWS4-HMAC-SHA256[ ]{1,20}Credential=(?<appKey>[\\w-]{0,128})/(?<date>[\\w-]{0,8})/(?<region>[\\w-]{0,64})/(?<service>[\\w-]{0,64})/aws4_request,[ ]{1,20}SignedHeaders=(?<headers>[\\w;-]+),[ ]{1,20}Signature=(?<signature>[\\w-]{0,64})$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern authorizationHeaderLooseNoCaptureRegex = Pattern.compile("^Authorization:[ ]{1,20}AWS4-HMAC-SHA256[ ]{1,20}Credential=[\\w-]{0,128}/[\\w-]{0,8}/[\\w-]{0,64}/[\\w-]{0,64}/aws4_request,[ ]{1,20}SignedHeaders=[\\w;-]+,[ ]{1,20}Signature=[\\w-]{0,64}$", Pattern.CASE_INSENSITIVE);
-
+    private static final String SIGNATURE_HEADERS = "x-ca-signature-headers";
+    private static final String SIGNATURE_KEY = "x-ca-key";
     // define headers for internal use
-    public static final String HEADER_PREFIX = "x-ca-";
-    public static final String PROFILE_HEADER_NAME = HEADER_PREFIX + "Profile"; // used to specify a named profile to sign the request with
-    public static final String SKIP_SIGNING_HEADER = HEADER_PREFIX + "Skip: DO NOT SIGN"; // do not sign any requests that contain this header
-
     protected IExtensionHelpers helpers;
     protected IBurpExtenderCallbacks callbacks;
-    private HashMap<String, SigProfile> profileappKeyMap; // map appKey to profile
-    private HashMap<String, SigProfile> profileNameMap; // map name to profile
+    private HashMap<String, String> signProfileKeyMap; // map appKey to profile
+    private HashMap<String, SigProfile> signProfileMap; // map name to profile
     protected LogWriter logger = LogWriter.getLogger();
 
     private JLabel statusLabel;
@@ -285,7 +277,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 callbacks.customizeUiComponent(dialog);
                 dialog.setVisible(true);
                 // set first profile added as the default
-                if (profileNameMap.size() == 1 && dialog.getNewProfileName() != null) {
+                if (signProfileMap.size() == 1 && dialog.getNewProfileName() != null) {
                     setDefaultProfileName(dialog.getNewProfileName());
                 }
             }
@@ -299,7 +291,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 if (rowIndeces.length == 1) {
                     DefaultTableModel model = (DefaultTableModel) profileTable.getModel();
                     final String name = (String) model.getValueAt(rowIndeces[0], 0);
-                    JDialog dialog = new SigProfileEditorDialog(null, "Edit Profile", true, profileNameMap.get(name));
+                    JDialog dialog = new SigProfileEditorDialog(null, "Edit Profile", true, signProfileMap.get(name));
                     callbacks.customizeUiComponent(dialog);
                     dialog.setVisible(true);
                 }
@@ -319,7 +311,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                     profileNames.add((String) model.getValueAt(rowIndex, 0));
                 }
                 for (final String name : profileNames) {
-                    deleteProfile(profileNameMap.get(name));
+                    deleteProfile(signProfileMap.get(name));
                 }
             }
         });
@@ -349,8 +341,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 if (chooser.showOpenDialog(getUiComponent()) == JFileChooser.APPROVE_OPTION) {
                     final Path exportPath = Paths.get(chooser.getSelectedFile().getPath());
                     ArrayList<SigProfile> sigProfiles = new ArrayList<>();
-                    for (final String name : profileNameMap.keySet()) {
-                        sigProfiles.add(profileNameMap.get(name));
+                    for (final String name : signProfileMap.keySet()) {
+                        sigProfiles.add(signProfileMap.get(name));
                     }
                     int exportCount = SigProfile.exportToFilePath(sigProfiles, exportPath);
                     final String msg = String.format("Exported %d profiles to %s", exportCount, exportPath);
@@ -477,8 +469,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             }
         }
 
-        this.profileappKeyMap = new HashMap<>();
-        this.profileNameMap = new HashMap<>();
+        this.signProfileKeyMap = new HashMap<>();
+        this.signProfileMap = new HashMap<>();
 
         SwingUtilities.invokeLater(new Runnable()
         {
@@ -490,7 +482,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 callbacks.addSuiteTab(BurpExtender.this);
                 callbacks.registerHttpListener(BurpExtender.this);
                 callbacks.registerContextMenuFactory(BurpExtender.this);
-                callbacks.registerMessageEditorTabFactory(BurpExtender.this);
                 logger.info(String.format("Loaded %s %s", EXTENSION_NAME, EXTENSION_VERSION));
             }
         });
@@ -545,8 +536,8 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 .signingEnabledForSequencer(advancedSettingsDialog.signingEnabledForSequencerCheckBox.isSelected())
                 .signingEnabledForExtender(advancedSettingsDialog.signingEnabledForExtenderCheckBox.isSelected());
         if (this.persistProfilesCheckBox.isSelected()) {
-            builder.profiles(this.profileNameMap);
-            logger.info(String.format("Saved %d profile(s)", this.profileNameMap.size()));
+            builder.profiles(this.signProfileMap);
+            logger.info(String.format("Saved %d profile(s)", this.signProfileMap.size()));
         }
         ExtensionSettings settings = builder.build();
         return getGsonSerializer(settings.settingsVersion()).toJson(settings);
@@ -632,11 +623,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         }
     }
 
-    @Override
-    public IMessageEditorTab createNewInstance(IMessageEditorController controller, boolean editable)
-    {
-        return new SigMessageEditorTab(controller, editable);
-    }
 
     @Override
     public void extensionUnloaded()
@@ -703,11 +689,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             case IContextMenuInvocation.CONTEXT_MESSAGE_VIEWER_REQUEST:
             case IContextMenuInvocation.CONTEXT_PROXY_HISTORY:
                 IHttpRequestResponse[] messages = invocation.getSelectedMessages();
-                IRequestInfo requestInfo = helpers.analyzeRequest(messages[0]);
-
-                final List<String> authorizationHeaders = requestInfo.getHeaders().stream()
-                        .filter(h -> StringUtils.startsWithIgnoreCase(h, SystemHeader.CLOUDAPI_X_CA_SIGNATURE))
-                        .collect(Collectors.toList());
 
                 if (invocation.getInvocationContext() == IContextMenuInvocation.CONTEXT_MESSAGE_EDITOR_REQUEST) {
                     JMenu addSignatureMenu = new JMenu("Add Signature");
@@ -721,7 +702,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                             public void actionPerformed(ActionEvent actionEvent)
                             {
                                 final String profileName = actionEvent.getActionCommand();
-                                SigProfile profile = profileNameMap.get(profileName);
+                                SigProfile profile = signProfileMap.get(profileName);
                                 if (profile == null) {
                                     // this should never happen since the menu is populated with existing profile names
                                     JOptionPane.showMessageDialog(getUiComponent(), formatMessageHtml("Profile name does not exist: "+profileName));
@@ -733,7 +714,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                                         // XXX we do some work to prevent custom signed headers specified in the SigV4 UI from
                                         // showing up in the Raw message editor tab to prevent them from being duplicated when
                                         // it's signed again. consider modifying signRequest() to optionally skip adding these.
-                                        final byte[] signedRequest = signRequest(messages[0].getHttpService(), messages[0].getRequest(), profileCopy);
+                                        final byte[] signedRequest = signRequest(messages[0], profileCopy);
                                         if (signedRequest == null || signedRequest.length == 0) {
                                             throw new NullPointerException("Request signing failed for profile: "+profileCopy.getName());
                                         }
@@ -753,35 +734,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         return list;
     }
 
-    // check Authorization header for appKey and return matching profile or null.
-    private SigProfile profileFromAuthorizationHeader(final String header) {
-        return Stream.of(header)
-                .map(h -> parseSigV4AuthorizationHeader(h, false))
-                .filter(Objects::nonNull)
-                .filter(a -> this.profileappKeyMap.containsKey(a.get("appKey")))
-                .map(a -> this.profileappKeyMap.get(a.get("appKey")))
-                .findFirst()
-                .orElse(null);
-    }
-
-    private static Map<String, String> parseSigV4AuthorizationHeader(final String header, final boolean strict)
-    {
-        Map<String, String> signature = null;
-        Pattern pattern = authorizationHeaderLooseRegex;
-        if (strict) {
-            pattern = authorizationHeaderRegex;
-        }
-        Matcher matcher = pattern.matcher(header);
-        if (matcher.matches()) {
-            signature = new HashMap<>(Map.of(
-                    "x-ca-key", matcher.group("appKey"),
-                    "date", matcher.group("date"),
-                    SystemHeader.CLOUDAPI_X_CA_SIGNATURE, matcher.group("x-ca-headers")
-            ));
-        }
-        return signature;
-    }
-
 
     // display status message in UI
     private void updateStatus(final String status)
@@ -793,7 +745,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     private List<String> getSortedProfileNames()
     {
         // sort by name in table
-        List<String> profileNames = new ArrayList<>(this.profileNameMap.keySet());
+        List<String> profileNames = new ArrayList<>(this.signProfileMap.keySet());
         Collections.sort(profileNames);
         return profileNames;
     }
@@ -810,7 +762,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         defaultProfileComboBox.addItem(NO_DEFAULT_PROFILE);
 
         for (final String name : getSortedProfileNames()) {
-            SigProfile profile = this.profileNameMap.get(name);
+            SigProfile profile = this.signProfileMap.get(name);
             model.addRow(new Object[]{profile.getName(), profile.getappKeyForProfileSelection(), profile.getappSecretForProfileSelection()});
             defaultProfileComboBox.addItem(name);
         }
@@ -822,26 +774,26 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     */
     protected void addProfile(final SigProfile profile)
     {
-        final SigProfile p1 = this.profileNameMap.get(profile.getName());
+        final SigProfile p1 = this.signProfileMap.get(profile.getName());
         if (p1 == null) {
             // profile name doesn't exist. make sure there is no keyId conflict with an existing profile
             if (profile.getappKeyForProfileSelection() != null) {
-                SigProfile p2 = this.profileappKeyMap.get(profile.getappKeyForProfileSelection());
+                String p2 = this.signProfileKeyMap.get(profile.getappKeyForProfileSelection());
                 if (p2 != null) {
                     // keyId conflict. do not add profile
                     updateStatus("Profiles must have a unique appKey: "+profile.getName());
-                    throw new IllegalArgumentException(String.format("Profiles must have a unique appKey: %s = %s", profile.getName(), p2.getName()));
+                    throw new IllegalArgumentException(String.format("Profiles must have a unique appKey: %s = %s", profile.getName(), p2));
                 }
             }
         }
 
-        this.profileNameMap.put(profile.getName(), profile);
+        this.signProfileMap.put(profile.getName(), profile);
 
         // refresh the keyId map
-        this.profileappKeyMap.clear();
-        for (final SigProfile p : this.profileNameMap.values()) {
+        this.signProfileKeyMap.clear();
+        for (final SigProfile p : this.signProfileMap.values()) {
             if (p.getappKeyForProfileSelection() != null) {
-                this.profileappKeyMap.put(p.getappKeyForProfileSelection(), p);
+                this.signProfileKeyMap.put(p.getappKeyForProfileSelection(), p.getName());
             }
         }
 
@@ -865,7 +817,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         }
 
         // remove any profile with same name
-        final SigProfile p1 = this.profileNameMap.get(oldProfile.getName());
+        final SigProfile p1 = this.signProfileMap.get(oldProfile.getName());
         if (p1 == null) {
             updateStatus("Update profile failed. Old profile doesn't exist.");
             throw new IllegalArgumentException("Update profile failed. Old profile doesn't exist.");
@@ -888,22 +840,24 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
     private void deleteProfile(SigProfile profile)
     {
-        if (this.profileNameMap.containsKey(profile.getName())) {
-            this.profileNameMap.remove(profile.getName());
+        if (this.signProfileMap.containsKey(profile.getName())) {
+            this.signProfileMap.remove(profile.getName());
             updateStatus(String.format("Deleted profile '%s'", profile.getName()));
         }
         if (profile.getappKeyForProfileSelection() != null) {
-            this.profileappKeyMap.remove(profile.getappKeyForProfileSelection());
+            this.signProfileKeyMap.remove(profile.getappKeyForProfileSelection());
         }
         updateAwsProfilesUI();
     }
 
-    public static boolean isAws4Request(final IRequestInfo request)
+    public boolean isAPIGatewayRequest(final  IHttpRequestResponse messageInfo)
     {
-        if (request.getHeaders().stream().anyMatch(h -> h.equalsIgnoreCase(SKIP_SIGNING_HEADER))) {
+        if(getHeaderValueOf(true, messageInfo, SIGNATURE_HEADERS) == null) {
             return false;
         }
-        return request.getHeaders().stream().anyMatch(h -> authorizationHeaderLooseNoCaptureRegex.matcher(h).matches());
+        else{
+            return true;
+        }
     }
 
 
@@ -972,100 +926,161 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         }
     }
 
-    public SigProfile getSigningProfile(final List<String> headers)
+    public SigProfile getSigningProfile(IHttpRequestResponse messageInfo)
     {
-        // check for http header that specifies a signing profile. if not specified in the header,
-        // use the default profile. lastly, check Authorization header for an appKey that matches
-        // an existing profile.
-        // XXX if a non-existent profile is specified in the header, error out?
-        SigProfile signingProfile = headers.stream()
-                .filter(h -> StringUtils.startsWithIgnoreCase(h, PROFILE_HEADER_NAME+":"))
-                .map(h -> this.profileNameMap.get(splitHeader(h)[1]))
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(this.profileNameMap.get(getDefaultProfileName()));
-
-        if (signingProfile == null) {
-            signingProfile = headers.stream()
-                    .map(this::profileFromAuthorizationHeader)
-                    .filter(Objects::nonNull)
-                    .findFirst()
-                    .orElse(null);
-        }
-
+        String appKey = getHeaderHashMap(true, messageInfo).get(SIGNATURE_KEY);
+        String name = this.signProfileKeyMap.get(appKey);
+        SigProfile signingProfile = this.signProfileMap.get(name);
         return signingProfile;
     }
 
-    /*
-     Always returns an array of size 2 even if value is empty string.
-     Name and value are trimmed of whitespace.
-     */
-    public static String[] splitHeader(final String header)
-    {
-        List<String> tokens = Arrays.stream(header.split(":", 2))
-                .map(String::trim)
-                .collect(Collectors.toList());
-        if (tokens.size() < 2) {
-            return new String[]{tokens.get(0), ""};
+
+    public static Map<String, String> getQueryMap(String query) {
+        String[] params = query.split("&");
+        Map<String, String> map = new HashMap<String, String>();
+
+        for (String param : params) {
+            String name = param.split("=")[0];
+            String value = param.split("=")[1];
+            map.put(name, value);
         }
-        return new String[]{tokens.get(0), tokens.get(1)};
+        return map;
     }
 
+    public byte[] getBody(boolean isRequest,byte[] requestOrResponse) {
+        if (requestOrResponse == null){
+            return null;
+        }
+        int bodyOffset = -1;
+        if(isRequest) {
+            IRequestInfo analyzeRequest = helpers.analyzeRequest(requestOrResponse);
+            bodyOffset = analyzeRequest.getBodyOffset();
+        }else {
+            IResponseInfo analyzeResponse = helpers.analyzeResponse(requestOrResponse);
+            bodyOffset = analyzeResponse.getBodyOffset();
+        }
+        byte[] byte_body = Arrays.copyOfRange(requestOrResponse, bodyOffset, requestOrResponse.length);//not length-1
+        //String body = new String(byte_body); //byte[] to String
+        return byte_body;
+    }
 
-    public byte[] signRequest(final IHttpService httpService, final byte[] originalRequestBytes, final SigProfile signingProfile)
-    {
-        IRequestInfo request = helpers.analyzeRequest(httpService, originalRequestBytes);
+    public String getHeaderValueOf(boolean messageIsRequest,IHttpRequestResponse messageInfo, String headerName) {
+        final String Header_Spliter = ": ";
+        List<String> headers=null;
+        if(messageIsRequest) {
+            if (messageInfo.getRequest() == null) {
+                return null;
+            }
+            IRequestInfo analyzeRequest = helpers.analyzeRequest(messageInfo);
+            headers = analyzeRequest.getHeaders();
+        }else {
+            if (messageInfo.getResponse() == null) {
+                return null;
+            }
+            IResponseInfo analyzeResponse = helpers.analyzeResponse(messageInfo.getResponse());
+            headers = analyzeResponse.getHeaders();
+        }
+
+
+        headerName = headerName.toLowerCase().replace(":", "");
+        for (String header : headers) {
+            if (header.toLowerCase().startsWith(headerName)) {
+                return header.split(Header_Spliter, 2)[1];
+            }
+        }
+        return null;
+    }
+
+    public HashMap<String,String> getHeaderHashMap(boolean messageIsRequest,IHttpRequestResponse messageInfo) {
+        final String Header_Spliter = ": ";
+        List<String> headers=null;
+        HashMap<String,String> result = new HashMap<String, String>();
+        //if (headers.size() <=0) return result;
+        if(messageIsRequest) {
+            IRequestInfo analyzeRequest = helpers.analyzeRequest(messageInfo);
+            headers = analyzeRequest.getHeaders();
+        }else {
+            IResponseInfo analyzeResponse = helpers.analyzeResponse(messageInfo.getResponse());
+            headers = analyzeResponse.getHeaders();
+        }
+
+        for (String header : headers) {
+            if(header.contains(Header_Spliter)) {//to void trigger the Exception
+                try {
+                    String headerName = header.split(Header_Spliter, 0)[0];
+                    String headerValue = header.split(Header_Spliter, 0)[1];
+                    //POST /login.pub HTTP/1.1  the first line of header will tirgger error here
+                    result.put(headerName, headerValue);
+                } catch (Exception e) {
+                    //e.printStackTrace();
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public static Map<String, String> splitQuery(URL url) throws UnsupportedEncodingException {
+        Map<String, String> query_pairs = new LinkedHashMap<String, String>();
+        String query = url.getQuery();
+        if (query == null){
+            return null;
+        }
+        String[] pairs = query.split("&");
+        for (String pair : pairs) {
+            int idx = pair.indexOf("=");
+            query_pairs.put(URLDecoder.decode(pair.substring(0, idx), "UTF-8"), URLDecoder.decode(pair.substring(idx + 1), "UTF-8"));
+        }
+        return query_pairs;
+    }
+    public byte[] signRequest(IHttpRequestResponse messageInfo, final SigProfile signingProfile) {
+        final String lineOne =  helpers.analyzeRequest(messageInfo).getHeaders().get(0);
+        HashMap<String,String> originalHeader  = getHeaderHashMap(true, messageInfo);
+        URL fullUrl = helpers.analyzeRequest(messageInfo).getUrl();
+        String reqMethod = helpers.analyzeRequest(messageInfo).getMethod();
+        Map<String, String> reqParams = new HashMap<>();
+        try{
+            reqParams = splitQuery(fullUrl);
+        }catch (UnsupportedEncodingException e){
+            logger.error(e.toString());
+            return null;
+        }
+
+        String[] signHeaders = originalHeader.get(SIGNATURE_HEADERS).split(",");
+
+
+        String reqHost = fullUrl.getHost();
+        String reqPath = fullUrl.getPath();
 
         List<String> finalHeaders = new ArrayList<>();
 
-        List<String> allHeaders = request.getHeaders();
-
-        //
-        final String lineOne = allHeaders.get(0);
 
         String appSecret = signingProfile.getappSecret();
         String appKey = signingProfile.getappKey();
 
-        String reqPath = lineOne.split(" ")[1];
-        String reqMethod = lineOne.split(" ")[0];
-        String reqHost = "invaild.host.name";
-        String reqContentType = "application/json";
-        String acpContentType = "*/*";
-        for (final String header : allHeaders) {
-            final String[] tokens = splitHeader(header);
-            final String name = tokens[0];
-            final String value = tokens[1];
-            if (name.toLowerCase().contains("host")){
-                reqHost = value;
-            }
-            if (name.toLowerCase().contains("content-type")){
-                reqContentType = value;
-            }
-            if (name.toLowerCase().contains("accept-type")){
-                reqContentType = value;
-            }
-        }
 
-        Map<String , String> headerParams = new HashMap<>();
-        //headerParams.put("Accept" , "*/*");
+        final byte[] body = getBody(true, messageInfo.getRequest());
 
-        String httpSchema = "";
+        logger.debug("\n=======ORIGINAL REQUEST HEADER==========\n"+originalHeader.toString());
+        logger.debug("\n=======ORIGINAL REQUEST url params ==========\n");
+        logger.debug("\n=======ORIGINAL REQUEST host, path ==========\n"+reqHost + "\n" + reqPath+ "\n" +  appSecret);
 
-        headerParams = null;
 
-        final byte[] body = Arrays.copyOfRange(originalRequestBytes, request.getBodyOffset(), originalRequestBytes.length);
+        //logger.debug(String.format("appSecret: %s,",appSecret));
+        finalHeaders = HttpUtil.httpGet(appKey, appSecret, signHeaders, reqHost, reqPath, reqParams, originalHeader);
+        logger.debug("\n======= buildHttpRequest ==========\n"+finalHeaders.toString());
 
-        logger.debug("======= buildHttpRequest ==========\n"+finalHeaders.toString());
-        logger.debug(String.format("appSecret: %s, reqmethod: %s, reqHost: %s, reqPath: %s, reqContentType: %s, reqAcceptType: %s",appSecret, reqMethod , reqHost , reqPath , reqContentType , acpContentType));
-        finalHeaders = HttpUtil.buildHttpRequest(appKey, appSecret, httpSchema ,reqMethod , reqHost , reqPath , null , null , null  , body , reqContentType , acpContentType , headerParams);
-        logger.debug("=======END buildHttpRequest=============");
 
-        Set<String> signedHeaderSet = getAdditionalSignedHeadersFromUI().stream().map(String::toLowerCase).collect(Collectors.toSet());
+
+
 
 
         finalHeaders.add(0, lineOne);
+
+
+
         final byte[] requestBytes = helpers.buildHttpMessage(finalHeaders, body);
-        logger.debug("=======SIGNED REQUEST==========\n"+helpers.bytesToString(requestBytes));
+        logger.debug("=======FINAL REQUEST============="+helpers.bytesToString(requestBytes));
         logger.debug("=======END REQUEST=============");
         return requestBytes;
     }
@@ -1096,23 +1111,11 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     public void processHttpMessage(int toolFlag, boolean messageIsRequest, IHttpRequestResponse messageInfo)
     {
         IRequestInfo request = null;
-
-        // Strip any headers used internally by the extension. When using the aws sdk, our http client adds a header
-        // to communicate to the extension that the request should be ignored. For example, when using the "Test"
-        // button, we send a request to sts:GetCallerIdentity and it is important that the original signature is not modified.
-        if (messageIsRequest && toolFlag == IBurpExtenderCallbacks.TOOL_EXTENDER) {
-            request = helpers.analyzeRequest(messageInfo);
-            if (request.getHeaders().stream().anyMatch(h -> StringUtils.equalsIgnoreCase(h, SKIP_SIGNING_HEADER))) {
-                // Found skip header
-                messageInfo.setRequest(helpers.buildHttpMessage(
-                        request.getHeaders().stream().filter(h -> !StringUtils.startsWithIgnoreCase(h, HEADER_PREFIX)).collect(Collectors.toList()),
-                        Arrays.copyOfRange(messageInfo.getRequest(), request.getBodyOffset(), messageInfo.getRequest().length)
-                ));
-                return;
-            }
+        if (!messageIsRequest){
+            return;
         }
 
-        if (messageIsRequest && signingEnabledCheckBox.isSelected() && isSigningEnabledForTool(toolFlag)) {
+        if (signingEnabledCheckBox.isSelected() && isSigningEnabledForTool(toolFlag)) {
             if (request == null) {
                 request = helpers.analyzeRequest(messageInfo);
             }
@@ -1123,15 +1126,15 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 return;
             }
 
-            if (isAws4Request(request)) {
-                final SigProfile signingProfile = getSigningProfile(request.getHeaders());
+            if (isAPIGatewayRequest(messageInfo)) {
+                final SigProfile signingProfile = getSigningProfile(messageInfo);
 
                 if (signingProfile == null) {
                     logger.error("Failed to get signing profile");
                     return;
                 }
 
-                final byte[] requestBytes = signRequest(messageInfo.getHttpService(), messageInfo.getRequest(), signingProfile);
+                final byte[] requestBytes = signRequest(messageInfo,  signingProfile);
                 if (requestBytes != null) {
                     messageInfo.setRequest(requestBytes);
                     messageInfo.setComment(DISPLAY_NAME+" "+signingProfile.getName());

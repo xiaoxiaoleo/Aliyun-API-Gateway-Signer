@@ -22,9 +22,10 @@ package com.alibaba.cloudapi.client;
 import com.alibaba.cloudapi.client.constant.Constants;
 import com.alibaba.cloudapi.client.constant.HttpHeader;
 import com.alibaba.cloudapi.client.constant.SystemHeader;
+import javax.crypto.spec.SecretKeySpec;
 
 import javax.crypto.Mac;
-import javax.crypto.spec.appSecretSpec;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
 import java.util.TreeMap;
@@ -35,17 +36,15 @@ import java.util.TreeMap;
 public class SignUtil {
 
     /**
-     *  
-     *
      */
-    public static String sign(String appSecret, String method , Map<String, String> headersParams , String pathWithParameter , Map<String, String> queryParams , Map<String, String> formParam) {
+    public static String sign(String appSecret, String[] signHeaders, String method , Map<String, String> headersParams , String pathWithParameter , Map<String, String> queryParams , Map<String, String> formParam) {
         try {
             Mac hmacSha256 = Mac.getInstance(Constants.CLOUDAPI_HMAC);
             byte[] keyBytes = appSecret.getBytes(Constants.CLOUDAPI_ENCODING);
-            hmacSha256.init(new appSecretSpec(keyBytes, 0, keyBytes.length, Constants.CLOUDAPI_HMAC));
+            hmacSha256.init(new SecretKeySpec(keyBytes, 0, keyBytes.length, Constants.CLOUDAPI_HMAC));
 
             //
-            String signString = buildStringToSign(method , headersParams , pathWithParameter , queryParams , formParam);
+            String signString = buildStringToSign(signHeaders, method , headersParams , pathWithParameter , queryParams , formParam);
 
             System.out.println("------------------");
             System.out.println(signString);
@@ -60,31 +59,38 @@ public class SignUtil {
         }
     }
 
-
     /**
      */
-    private static String buildStringToSign(String method , Map<String, String> headerParams, String pathWithParameter, Map<String, String> queryParams ,  Map<String, String> formParams) {
+    private static String buildStringToSign(String[] signHeaders, String method , Map<String, String> headerParams, String pathWithParameter, Map<String, String> queryParams ,  Map<String, String> formParams) {
 
         StringBuilder sb = new StringBuilder();
         sb.append(method).append(Constants.CLOUDAPI_LF);
 
         //
-        if (headerParams.get(HttpHeader.CLOUDAPI_HTTP_HEADER_ACCEPT) != null) {
-            sb.append(headerParams.get(HttpHeader.CLOUDAPI_HTTP_HEADER_ACCEPT));
+        for( String key : headerParams.keySet()){
+            if(key.toLowerCase().equals(HttpHeader.CLOUDAPI_HTTP_HEADER_ACCEPT)){
+                sb.append(headerParams.get(key));
+            }
         }
         sb.append(Constants.CLOUDAPI_LF);
 
         //
-        if (headerParams.get(HttpHeader.CLOUDAPI_HTTP_HEADER_CONTENT_MD5) != null) {
-            sb.append(headerParams.get(HttpHeader.CLOUDAPI_HTTP_HEADER_CONTENT_MD5));
+        for( String key : headerParams.keySet()){
+            if(key.toLowerCase().equals(HttpHeader.CLOUDAPI_HTTP_HEADER_CONTENT_MD5)){
+                sb.append(headerParams.get(key));
+            }
         }
         sb.append(Constants.CLOUDAPI_LF);
 
         //
-        if (headerParams.get(HttpHeader.CLOUDAPI_HTTP_HEADER_CONTENT_TYPE) != null) {
-            sb.append(headerParams.get(HttpHeader.CLOUDAPI_HTTP_HEADER_CONTENT_TYPE));
+
+        for( String key : headerParams.keySet()){
+            if(key.toLowerCase().equals(HttpHeader.CLOUDAPI_HTTP_HEADER_CONTENT_TYPE)){
+                sb.append(headerParams.get(key));
+            }
         }
         sb.append(Constants.CLOUDAPI_LF);
+
 
         //
         if (headerParams.get(HttpHeader.CLOUDAPI_HTTP_HEADER_DATE) != null) {
@@ -93,7 +99,7 @@ public class SignUtil {
         sb.append(Constants.CLOUDAPI_LF);
 
         //
-        sb.append(buildHeaders(headerParams));
+        sb.append(buildHeaders(signHeaders, headerParams));
 
         //
         sb.append(buildResource(pathWithParameter, queryParams , formParams));
@@ -132,9 +138,9 @@ public class SignUtil {
     }
 
     /**
-     *  
+     *
      */
-    private static String buildHeaders(Map<String, String> headers) {
+    private static String buildHeaders(String[] signHeaders, Map<String, String> headers) {
         //
         Map<String, String> headersToSign = new TreeMap<String, String>();
 
@@ -143,7 +149,7 @@ public class SignUtil {
 
             int flag = 0;
             for (Map.Entry<String, String> header : headers.entrySet()) {
-                if (header.getKey().startsWith(Constants.CLOUDAPI_CA_HEADER_TO_SIGN_PREFIX_SYSTEM)) {
+                if (Arrays.asList(signHeaders).contains(header.getKey())) {
                     if (flag != 0) {
                         signHeadersStringBuilder.append(",");
                     }
