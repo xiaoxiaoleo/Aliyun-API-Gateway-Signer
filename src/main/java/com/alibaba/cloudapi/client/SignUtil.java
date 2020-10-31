@@ -19,6 +19,7 @@
 
 package com.alibaba.cloudapi.client;
 
+import burp.LogWriter;
 import com.alibaba.cloudapi.client.constant.Constants;
 import com.alibaba.cloudapi.client.constant.HttpHeader;
 import com.alibaba.cloudapi.client.constant.SystemHeader;
@@ -34,7 +35,7 @@ import java.util.TreeMap;
  * Created by fred on 16/9/7.
  */
 public class SignUtil {
-
+    protected static LogWriter logger = LogWriter.getLogger();
     /**
      */
     public static String sign(String appSecret, String[] signHeaders, String method , Map<String, String> headersParams , String pathWithParameter , Map<String, String> queryParams , Map<String, String> formParam) {
@@ -46,9 +47,10 @@ public class SignUtil {
             //
             String signString = buildStringToSign(signHeaders, method , headersParams , pathWithParameter , queryParams , formParam);
 
-            System.out.println("------------------");
-            System.out.println(signString);
-            System.out.println("------------------");
+
+            logger.debug("------------------");
+            logger.debug(signString);
+            logger.debug("------------------");
 
             //
             byte[] signResult = hmacSha256.doFinal(signString.getBytes(Constants.CLOUDAPI_ENCODING));
