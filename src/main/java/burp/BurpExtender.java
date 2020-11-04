@@ -61,12 +61,11 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     private JComboBox<Object> logLevelComboBox;
     private JCheckBox persistProfilesCheckBox;
     private JCheckBox inScopeOnlyCheckBox;
+    private JCheckBox customSignHeaderCheckBox;
     private JTextField additionalSignedHeadersField;
     private AdvancedSettingsDialog advancedSettingsDialog;
 
     private JTable profileTable;
-    private JTable customHeadersTable;
-    private JCheckBox customHeadersOverwriteCheckbox;
     private JScrollPane outerScrollPane;
 
     // mimic burp colors
@@ -101,9 +100,12 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         inScopeOnlyCheckBox.setToolTipText("Sign in-scope requests only");
         persistProfilesCheckBox = new JCheckBox("Persist Profiles");
         persistProfilesCheckBox.setToolTipText("Save profiles, including keys, in Burp settings store");
+        customSignHeaderCheckBox = new JCheckBox("custom Signer Header");
+        customSignHeaderCheckBox.setToolTipText("custom signer header,eg, x-ca-signature-headers: x-ca-key,x-ca-nonce,x-ca-signaturemethod,x-ca-stage");
         checkBoxPanel.add(signingEnabledCheckBox);
         checkBoxPanel.add(inScopeOnlyCheckBox);
         checkBoxPanel.add(persistProfilesCheckBox);
+        checkBoxPanel.add(customSignHeaderCheckBox);
         JPanel otherSettingsPanel = new JPanel();
         defaultProfileComboBox = new JComboBox<>();
         logLevelComboBox = new JComboBox<>();
@@ -182,38 +184,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         profilePanel.add(profileScrollPane, c003);
 
         //
-        // custom signed headers table
-        //
-        JPanel customHeadersPanel = new JPanel(new GridBagLayout());
-        JLabel customHeadersLabel = new JLabel("Custom Signed Headers");
-        customHeadersLabel.setForeground(textOrange);
-        customHeadersLabel.setFont(sectionFont);
-        customHeadersOverwriteCheckbox = new JCheckBox("Overwrite existing headers");
-        customHeadersOverwriteCheckbox.setToolTipText("Default behavior is to append these headers even if they exist in original request");
-        JPanel customHeadersButtonPanel = new JPanel();
-        customHeadersButtonPanel.setLayout(new GridLayout(3, 1));
-        JButton addCustomHeaderButton = new JButton("Add");
-        JButton removeCustomHeaderButton = new JButton("Remove");
-        customHeadersButtonPanel.add(addCustomHeaderButton);
-        customHeadersButtonPanel.add(removeCustomHeaderButton);
-
-        final String[] headersColumnNames = {"Name", "Value"};
-        customHeadersTable = new JTable(new DefaultTableModel(headersColumnNames, 0));
-        JScrollPane headersScrollPane = new JScrollPane(customHeadersTable);
-        headersScrollPane.setPreferredSize(new Dimension(1000, 150));
-
-        GridBagConstraints c100 = new GridBagConstraints(); c100.gridy = 0; c100.gridwidth = 2; c100.anchor = GridBagConstraints.FIRST_LINE_START;
-        GridBagConstraints c101 = new GridBagConstraints(); c101.gridy = 1; c101.gridwidth = 2; c101.anchor = GridBagConstraints.FIRST_LINE_START; c101.insets = new Insets(10, 0, 10, 0);
-        GridBagConstraints c102 = new GridBagConstraints(); c102.gridy = 2; c102.gridx = 1; c102.anchor = GridBagConstraints.FIRST_LINE_START;
-        GridBagConstraints c103 = new GridBagConstraints(); c103.gridy = 3; c103.gridx = 0; c103.anchor = GridBagConstraints.FIRST_LINE_START;
-        GridBagConstraints c104 = new GridBagConstraints(); c104.gridy = 3; c104.gridx = 1; c104.anchor = GridBagConstraints.FIRST_LINE_START;
-        customHeadersPanel.add(customHeadersLabel, c100);
-        customHeadersPanel.add(new JLabel("Add request headers to be included in the signature. These can be edited in place."), c101);
-        customHeadersPanel.add(customHeadersOverwriteCheckbox, c102);
-        customHeadersPanel.add(customHeadersButtonPanel, c103);
-        customHeadersPanel.add(headersScrollPane, c104);
-
-        //
         // additional headers to sign
         //
         JPanel additionalSignedHeadersPanel = new JPanel(new GridBagLayout());
@@ -225,7 +195,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         GridBagConstraints c201 = new GridBagConstraints(); c201.gridy = 1; c201.gridwidth = 2; c201.anchor = GridBagConstraints.FIRST_LINE_START; c201.insets = new Insets(10, 0, 10, 0);
         GridBagConstraints c202 = new GridBagConstraints(); c202.gridy = 2; c202.anchor = GridBagConstraints.FIRST_LINE_START;
         additionalSignedHeadersPanel.add(additionalHeadersLabel, c200);
-        additionalSignedHeadersPanel.add(new JLabel("Specify comma-separated header names from the request to include in the signature. Defaults are Host and X-CA-*"), c201);
+        additionalSignedHeadersPanel.add(new JLabel("Specify comma-separated header names from the request to include in the signature. eg, x-ca-signature-headers: x-ca-key,x-ca-nonce,x-ca-signaturemethod,x-ca-stage"), c201);
         additionalSignedHeadersPanel.add(additionalSignedHeadersField, c202);
 
         //
@@ -250,10 +220,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         outerPanel.add(new JSeparator(SwingConstants.HORIZONTAL), c);
         //outerPanel.add(statusPanel, sectionConstraints.remove(0));
         outerPanel.add(profilePanel, sectionConstraints.remove(0));
-        c = sectionConstraints.remove(0);
-        c.fill = GridBagConstraints.HORIZONTAL;
-        outerPanel.add(new JSeparator(SwingConstants.HORIZONTAL), c);
-        outerPanel.add(customHeadersPanel, sectionConstraints.remove(0));
         c = sectionConstraints.remove(0);
         c.fill = GridBagConstraints.HORIZONTAL;
         outerPanel.add(new JSeparator(SwingConstants.HORIZONTAL), c);
@@ -352,46 +318,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
             }
         });
 
-        // custom header button handlers
-        addCustomHeaderButton.addActionListener(new ActionListener()
-        {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent)
-            {
-                DefaultTableModel model = (DefaultTableModel) customHeadersTable.getModel();
-                int i;
-                for (i = 0; i < model.getRowCount(); i++) {
-                    final String name = ((String) model.getValueAt(i, 0)).trim();
-                    if (name.length() == 0) {
-                        // do not add more rows if an empty row exists
-                        break;
-                    }
-                }
-                if (i == model.getRowCount()) {
-                    model.addRow(new Object[]{"", ""});
-                }
-                customHeadersTable.clearSelection();
-                customHeadersTable.addRowSelectionInterval(i, i);
-                customHeadersTable.addColumnSelectionInterval(0, 0);
-                customHeadersTable.editCellAt(i, 0);
-            }
-        });
-        removeCustomHeaderButton.addActionListener(new ActionListener()
-        {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent)
-            {
-                DefaultTableModel model = (DefaultTableModel) customHeadersTable.getModel();
-                // remove editor or the table locks up if a cell is being edited
-                customHeadersTable.removeEditor();
-                // remove rows in reverse order or larger indices will become invalid before removing
-                Arrays.stream(customHeadersTable.getSelectedRows())
-                        .boxed()
-                        .sorted(Comparator.reverseOrder())
-                        .forEach(model::removeRow);
-            }
-        });
-
         // log level combo box
         class LogLevelComboBoxItem
         {
@@ -487,6 +413,7 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         });
     }
 
+
     /*
     build Gson object for de/serialization of settings. SigCredential, SigCredentialProvider, and Path need
     to be handled as a special case since they're interfaces.
@@ -522,8 +449,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
                 .persistProfiles(this.persistProfilesCheckBox.isSelected())
                 .extensionEnabled(this.signingEnabledCheckBox.isSelected())
                 .defaultProfileName(this.getDefaultProfileName())
-                .customSignedHeaders(getCustomHeadersFromUI())
-                .customSignedHeadersOverwrite(this.customHeadersOverwriteCheckbox.isSelected())
                 .additionalSignedHeaderNames(getAdditionalSignedHeadersFromUI())
                 .inScopeOnly(this.inScopeOnlyCheckBox.isSelected())
                 .preserveHeaderOrder(this.advancedSettingsDialog.preserveHeaderOrderCheckBox.isSelected())
@@ -579,8 +504,6 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         setDefaultProfileName(settings.defaultProfileName());
         this.persistProfilesCheckBox.setSelected(settings.persistProfiles());
         this.signingEnabledCheckBox.setSelected(settings.extensionEnabled());
-        setCustomHeadersInUI(settings.customSignedHeaders());
-        this.customHeadersOverwriteCheckbox.setSelected(settings.customSignedHeadersOverwrite());
         this.additionalSignedHeadersField.setText(String.join(", ", settings.additionalSignedHeaderNames()));
         this.inScopeOnlyCheckBox.setSelected(settings.inScopeOnly());
 
@@ -889,42 +812,18 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
     private List<String> getAdditionalSignedHeadersFromUI()
     {
-        return Arrays.asList(additionalSignedHeadersField.getText().split(",+"))
-                .stream()
-                .map(String::trim)
-                .filter(h -> h.length() > 0)
-                .collect(Collectors.toList());
-    }
-
-    /* get the additional headers specified in the UI */
-    private List<String> getCustomHeadersFromUI()
-    {
-        List<String> headers = new ArrayList<>();
-        DefaultTableModel model = (DefaultTableModel) customHeadersTable.getModel();
-        for (int i = 0; i < model.getRowCount(); i++) {
-            final String name = ((String) model.getValueAt(i, 0)).trim();
-            final String value = ((String) model.getValueAt(i, 1)).trim();
-            if (name.length() > 0) { // skip empty header names
-                headers.add(String.format("%s: %s", name, value));
-            }
+        try {
+            String[] signHeaders = additionalSignedHeadersField.getText().split(": ")[1].split(",");
+            return Arrays.asList(signHeaders);
         }
-        return headers;
-    }
-
-    private void setCustomHeadersInUI(final List<String> customHeaders)
-    {
-        DefaultTableModel model = (DefaultTableModel) customHeadersTable.getModel();
-        model.setRowCount(0);
-        for (final String header : customHeaders) {
-            final String[] tokens = header.split("[\\s:]+");
-            if (tokens.length == 1) {
-                model.addRow(new Object[]{tokens[0], ""});
-            }
-            else {
-                model.addRow(new Object[]{tokens[0], tokens[1]});
-            }
+        catch(Exception e) {
+            logger.error(e.toString());
+            logger.error("Sigature header string format error, using format like: x-ca-signature-headers: x-ca-key, X-Ca-Nonce");
         }
     }
+
+
+
 
     public SigProfile getSigningProfile(IHttpRequestResponse messageInfo)
     {
@@ -1067,7 +966,23 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
 
 
         //logger.debug(String.format("appSecret: %s,",appSecret));
-        finalHeaders = HttpUtil.httpGet(appKey, appSecret, signHeaders, reqHost, reqPath, reqParams, originalHeader);
+        if(reqMethod == "GET") {
+            finalHeaders = HttpUtil.httpGet(appKey, appSecret, signHeaders, reqHost, reqPath, reqParams, originalHeader);
+        }
+        else {
+            if (reqMethod == "POST") {
+                for (String k : originalHeader.keySet()) {
+                    if (k.toLowerCase() == "content-type") {
+                        if (originalHeader.get(k).toLowerCase().contains("form")) {
+                            HashMap<String, String> form = null;
+                            finalHeaders = HttpUtil.httpPostForm(appKey, appSecret, signHeaders, reqHost, reqPath, reqParams, form, originalHeader);
+                        }
+                    }
+                }
+            } else {
+                finalHeaders = HttpUtil.httpPostBytes(appKey, appSecret, signHeaders, reqHost, reqPath, reqParams, body, originalHeader);
+            }
+        }
         logger.debug("\n======= buildHttpRequest ==========\n"+finalHeaders.toString());
 
 

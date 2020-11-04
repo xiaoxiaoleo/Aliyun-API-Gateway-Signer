@@ -1,7 +1,7 @@
 
 package com.alibaba.cloudapi.client;
 
-import burp.LogWriter;
+
 import com.alibaba.cloudapi.client.constant.Constants;
 import com.alibaba.cloudapi.client.constant.HttpHeader;
 import com.alibaba.cloudapi.client.constant.HttpMethod;
@@ -56,26 +56,41 @@ public class HttpUtil {
 
         Date current = new Date();
         //
-        headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_DATE , HttpUtil.getHttpDateHeaderValue(current));
         //headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_DATE , "Sun, 18 Oct 2020 16:42:59 GMT");
 
         for(String header : signHeaders){
-            if(header.contains(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP)){
-                headerParams.put(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP, String.valueOf(current.getTime()));
+            if(header.toLowerCase().contains(HttpHeader.CLOUDAPI_HTTP_HEADER_DATE)){
+                //headerParams.put(header, HttpUtil.getHttpDateHeaderValue(current));
+                headerParams.put(header, HttpUtil.getHttpDateHeaderValue(current));
+
+            }
+
+            if(header.toLowerCase().contains(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP)){
+                headerParams.put(header, String.valueOf(current.getTime()));
                 //headerParams.put(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP, String.valueOf("1603039241373"));
+            }
+            if(header.toLowerCase().contains(SystemHeader.CLOUDAPI_X_CA_NONCE)){
+                headerParams.put(header, UUID.randomUUID().toString());
+                //headerParams.put(header,String.valueOf("e75f094e-6ff0-4de4-9b52-acf6da868927"));
+            }
+            if(header.toLowerCase().contains(HttpHeader.CLOUDAPI_HTTP_HEADER_HOST)){
+                headerParams.put(header, host);
+            }
+
+            if(header.toLowerCase().contains(SystemHeader.CLOUDAPI_X_CA_SIGNATURE_METHOD)){
+                headerParams.put(header, "HmacSHA256");
             }
         }
 
 
         //
-        headerParams.put(SystemHeader.CLOUDAPI_X_CA_NONCE, UUID.randomUUID().toString());
+
         //headerParams.put(SystemHeader.CLOUDAPI_X_CA_NONCE, "22791fae-891d-489d-9597-cd881e987715");
 
         //
         //headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_USER_AGENT, Constants.CLOUDAPI_USER_AGENT);
 
         //
-        headerParams.put(HttpHeader.CLOUDAPI_HTTP_HEADER_HOST , host);
 
         //
 /*        headerParams.put(SystemHeader.CLOUDAPI_X_CA_KEY, appKey);

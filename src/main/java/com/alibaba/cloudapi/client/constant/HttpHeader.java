@@ -32,7 +32,7 @@ public class HttpHeader {
     //
     public static final String CLOUDAPI_HTTP_HEADER_USER_AGENT = "User-Agent";
     //
-    public static final String CLOUDAPI_HTTP_HEADER_DATE = "Date";
+    public static final String CLOUDAPI_HTTP_HEADER_DATE = "date";
     //
     public static final String CLOUDAPI_HTTP_HEADER_HOST = "Host";
 }

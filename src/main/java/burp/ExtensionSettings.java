@@ -47,7 +47,7 @@ public class ExtensionSettings {
 
     @Since(0)
     @Builder.Default
-    boolean extensionEnabled = true;
+    boolean extensionEnabled = false;
 
     @Since(0)
     @Builder.Default
