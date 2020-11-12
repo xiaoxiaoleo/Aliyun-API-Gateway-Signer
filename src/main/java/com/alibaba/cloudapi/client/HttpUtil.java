@@ -70,8 +70,8 @@ public class HttpUtil {
                 //headerParams.put(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP, String.valueOf("1603039241373"));
             }
             if(header.toLowerCase().contains(SystemHeader.CLOUDAPI_X_CA_NONCE)){
-                //headerParams.put(header, UUID.randomUUID().toString());
-                headerParams.put(header,String.valueOf("8604adcb-cc7b-46ae-b807-c4b59c18c999"));
+                headerParams.put(header, UUID.randomUUID().toString());
+                //headerParams.put(header,String.valueOf("e75f094e-6ff0-4de4-9b52-acf6da868927"));
             }
             if(header.toLowerCase().contains(HttpHeader.CLOUDAPI_HTTP_HEADER_HOST)){
                 headerParams.put(header, host);
