@@ -811,14 +811,15 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
     }
 
     private List<String> getAdditionalSignedHeadersFromUI()
-    {
+    {   String[] signHeaders = null;
         try {
-            String[] signHeaders = additionalSignedHeadersField.getText().split(": ")[1].split(",");
+            signHeaders = additionalSignedHeadersField.getText().split(": ")[1].split(",");
             return Arrays.asList(signHeaders);
         }
         catch(Exception e) {
             logger.error(e.toString());
             logger.error("Sigature header string format error, using format like: x-ca-signature-headers: x-ca-key, X-Ca-Nonce");
+            return null;
         }
     }
 
