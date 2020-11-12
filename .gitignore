@@ -27,3 +27,4 @@ build/tmp/compileJava/java-compiler-args.txt
 build/tmp/jar/MANIFEST.MF
 build/tmp/bigJar/MANIFEST.MF
 *.me
+README.md
