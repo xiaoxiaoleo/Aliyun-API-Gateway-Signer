@@ -967,22 +967,37 @@ public class BurpExtender implements IBurpExtender, IHttpListener, ITab, IExtens
         logger.debug("\n=======ORIGINAL REQUEST host, path ==========\n"+reqHost + "\n" + reqPath+ "\n" +  appSecret);
 
 
-        //logger.debug(String.format("appSecret: %s,",appSecret));
-        if(reqMethod == "GET") {
-            finalHeaders = HttpUtil.httpGet(appKey, appSecret, signHeaders, reqHost, reqPath, reqParams, originalHeader);
-        }
-        else {
-            if (reqMethod == "POST") {
+        switch(reqMethod){
+            case "GET":
+                finalHeaders = HttpUtil.httpGet(appKey, appSecret, signHeaders, reqHost, reqPath, reqParams, originalHeader);
+                break;
+            case "POST":
                 for (String k : originalHeader.keySet()) {
                     if (k.toLowerCase() == "content-type") {
                         if (originalHeader.get(k).toLowerCase().contains("form")) {
                             HashMap<String, String> form = null;
                             finalHeaders = HttpUtil.httpPostForm(appKey, appSecret, signHeaders, reqHost, reqPath, reqParams, form, originalHeader);
+                            break;
                         }
+
                     }
                 }
-            } else {
+
                 finalHeaders = HttpUtil.httpPostBytes(appKey, appSecret, signHeaders, reqHost, reqPath, reqParams, body, originalHeader);
+                break;
+            case "PUT":
+                finalHeaders = HttpUtil.httpPutBytes(appKey, appSecret, signHeaders, reqHost, reqPath, reqParams, body, originalHeader);
+
+                break;
+        }
+
+        //logger.debug(String.format("appSecret: %s,",appSecret));
+        if(reqMethod == "GET") {
+        }
+        else {
+            if (reqMethod == "POST") {
+
+            } else {
             }
         }
         logger.debug("\n======= buildHttpRequest ==========\n"+finalHeaders.toString());

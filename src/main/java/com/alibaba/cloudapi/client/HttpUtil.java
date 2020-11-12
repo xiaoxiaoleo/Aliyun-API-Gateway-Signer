@@ -40,6 +40,13 @@ public class HttpUtil {
         return request;
     }
 
+    public static List<String> httpPutBytes(String appKey, String appSecret, String[] signHeaders, String host, String path , Map<String , String> queryParams , byte[] body , Map<String , String> headerParams)
+    {
+
+        List<String> request = buildHttpRequest(appKey, appSecret , signHeaders, HttpMethod.CLOUDAPI_PUT ,host , path , null , queryParams , null  , body , ContentType.CLOUDAPI_CONTENT_TYPE_STREAM , ContentType.CLOUDAPI_CONTENT_TYPE_JSON , headerParams);
+        return request;
+    }
+
     private  static List<String> buildHttpRequest(String appKey, String appSecret, String[] signHeaders, String method , String host , String path , Map<String , String> pathParams , Map<String , String> queryParams ,  Map<String , String> formParams , byte[] body , String requestContentType , String acceptContentType , Map<String , String> headerParams){
 
         List<String> finalHeaders = new ArrayList<>();
