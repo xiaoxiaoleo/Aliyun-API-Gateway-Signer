@@ -30,7 +30,7 @@ public class SystemHeader {
 
     public static final String CLOUDAPI_X_CA_SIGNATURE_METHOD = "x-ca-signature-method";
     //
-    public static final String CLOUDAPI_X_CA_TIMESTAMP = "X-ca-timestamp";
+    public static final String CLOUDAPI_X_CA_TIMESTAMP = "x-ca-timestamp";
     //
     public static final String CLOUDAPI_X_CA_NONCE = "x-ca-nonce";
     //APP Key

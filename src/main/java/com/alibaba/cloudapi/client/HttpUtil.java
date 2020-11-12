@@ -69,6 +69,11 @@ public class HttpUtil {
                 headerParams.put(header, String.valueOf(current.getTime()));
                 //headerParams.put(SystemHeader.CLOUDAPI_X_CA_TIMESTAMP, String.valueOf("1603039241373"));
             }
+
+            if(header.toLowerCase().contains(SystemHeader.CLOUDAPI_X_CA_KEY)){
+                headerParams.put(header, appKey);
+            }
+
             if(header.toLowerCase().contains(SystemHeader.CLOUDAPI_X_CA_NONCE)){
                 headerParams.put(header, UUID.randomUUID().toString());
                 //headerParams.put(header,String.valueOf("e75f094e-6ff0-4de4-9b52-acf6da868927"));
@@ -78,7 +83,7 @@ public class HttpUtil {
             }
 
             if(header.toLowerCase().contains(SystemHeader.CLOUDAPI_X_CA_SIGNATURE_METHOD)){
-                headerParams.put(header, "HmacSHA256");
+                headerParams.put(header, Constants.CLOUDAPI_HMAC);
             }
         }
 

@@ -49,8 +49,10 @@ public class SignUtil {
             //
             String signString = buildStringToSign(signHeaders, method , headersParams , pathWithParameter , queryParams , formParam);
 
-            System.out.println(signString.replace("\n","#").toString());
-            logger.debug(signString.replace("\n","#"));
+            System.out.println("------------------");
+            System.out.println(signString);
+            System.out.println("------------------");
+
             //
             byte[] signResult = hmacSha256.doFinal(signString.getBytes(Constants.CLOUDAPI_ENCODING));
             byte[] base64Bytes = Base64.getEncoder().encode(signResult);
